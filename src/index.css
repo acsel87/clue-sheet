@@ -1,104 +1,155 @@
-/* Mobile-first base */
 :root {
-  color-scheme: light dark;
-  --bg: #0b0f19;
-  --fg: #e8eefc;
-  --muted: #a9b4cf;
-  --card: rgba(255, 255, 255, 0.06);
+  --bg: #0b0f17;
+  --panel: #111827;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
   --border: rgba(255, 255, 255, 0.12);
-  --radius: 14px;
-  --maxw: 980px;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-*,
-*::before,
-*::after {
+* {
   box-sizing: border-box;
 }
-
 html,
 body {
   height: 100%;
 }
-
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--fg);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
-    "Apple Color Emoji", "Segoe UI Emoji";
-}
-
-a {
-  color: inherit;
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
 .app {
-  min-height: 100%;
-  padding: 16px;
+  padding: 12px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.topbar {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
 }
-
-.app__header,
-.app__main {
-  width: 100%;
-  max-width: var(--maxw);
-}
-
-.app__header {
-  padding: 12px 4px 8px;
-}
-
-.app__title {
+.title {
+  font-size: 20px;
   margin: 0;
-  font-size: 22px;
-  letter-spacing: 0.2px;
 }
-
-.app__subtitle {
-  margin: 8px 0 0;
+.subtitle {
+  font-size: 12px;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.35;
 }
 
-.app__main {
-  padding: 12px 0 24px;
-}
-
-.card {
-  background: var(--card);
+.sheet {
+  background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.card__title {
-  margin: 0 0 10px;
-  font-size: 16px;
+.sheetHeader {
+  display: grid;
+  grid-template-columns: 1fr 72px repeat(3, 180px);
+  border-bottom: 1px solid var(--border);
 }
 
-.card__list {
-  margin: 0;
-  padding-left: 18px;
+.cell {
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.cardColHeader,
+.cardCell {
+  justify-content: flex-start;
+}
+.publicHeader {
+  font-weight: 600;
+}
+
+.playerHeader {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  border-right: 1px solid var(--border);
+}
+.playerName {
+  justify-content: center;
+  font-weight: 600;
+}
+.factHeader,
+.maybeHeader {
+  font-size: 12px;
   color: var(--muted);
-  line-height: 1.5;
 }
 
-/* Slightly roomier layout on larger screens */
-@media (min-width: 520px) {
-  .app {
-    padding: 20px;
-  }
+.category {
+  padding: 8px 0 2px;
+}
+.categoryTitle {
+  margin: 10px 12px 8px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
 
-  .app__title {
-    font-size: 26px;
+.grid {
+  display: flex;
+  flex-direction: column;
+}
+.row {
+  display: grid;
+  grid-template-columns: 1fr 72px repeat(3, 180px);
+  border-top: 1px solid var(--border);
+}
+.row:first-child {
+  border-top: 0;
+}
+
+.cardCell {
+  gap: 10px;
+}
+.cardId {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.cardName {
+  font-size: 14px;
+}
+
+.playerCells {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.playerCells .cell {
+  border-right: 1px solid var(--border);
+}
+.playerCells .cell:last-child {
+  border-right: 0;
+}
+
+@media (max-width: 840px) {
+  .sheetHeader,
+  .row {
+    grid-template-columns: 1fr 64px repeat(3, 160px);
+  }
+}
+
+@media (max-width: 720px) {
+  .app {
+    padding: 10px;
+  }
+  .sheetHeader,
+  .row {
+    grid-template-columns: 1fr 60px repeat(3, 140px);
   }
 }
