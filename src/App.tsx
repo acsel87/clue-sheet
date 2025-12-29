@@ -1,3 +1,5 @@
+import { HasIcon, NotIcon } from "./icons"
+
 export function App() {
   return (
     <div className="app">
@@ -14,6 +16,8 @@ export function App() {
             <li>Implement rule engine (✅/❌/unknown sets/Public)</li>
             <li>Build the grid UI</li>
           </ol>
+          <HasIcon />
+          <NotIcon />
         </section>
       </main>
     </div>
