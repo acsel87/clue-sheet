@@ -1,0 +1,104 @@
+/* Mobile-first base */
+:root {
+  color-scheme: light dark;
+  --bg: #0b0f19;
+  --fg: #e8eefc;
+  --muted: #a9b4cf;
+  --card: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.12);
+  --radius: 14px;
+  --maxw: 980px;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+a {
+  color: inherit;
+}
+
+.app {
+  min-height: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app__header,
+.app__main {
+  width: 100%;
+  max-width: var(--maxw);
+}
+
+.app__header {
+  padding: 12px 4px 8px;
+}
+
+.app__title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.2px;
+}
+
+.app__subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.app__main {
+  padding: 12px 0 24px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.card__title {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.card__list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Slightly roomier layout on larger screens */
+@media (min-width: 520px) {
+  .app {
+    padding: 20px;
+  }
+
+  .app__title {
+    font-size: 26px;
+  }
+}
