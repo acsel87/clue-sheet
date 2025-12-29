@@ -1,4 +1,4 @@
-import { HasIcon, NotIcon } from "./icons"
+import { HasIcon, MaybeIcon, NotIcon } from "./ui/icons"
 
 export function App() {
   return (
@@ -18,6 +18,11 @@ export function App() {
           </ol>
           <HasIcon />
           <NotIcon />
+          <MaybeIcon />
+          <MaybeIcon colorKey="blue" />
+          <MaybeIcon colorKey="green" />
+          <MaybeIcon colorKey="orange" />
+          <MaybeIcon colorKey="purple" />
         </section>
       </main>
     </div>

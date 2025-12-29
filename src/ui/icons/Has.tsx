@@ -1,8 +1,10 @@
+// src/ui/icons/Has.tsx
+
 import React from 'react';
 
-export const NotIcon = (props: React.SVGProps<SVGSVGElement>) => {
+export const HasIcon = (props: React.SVGProps<SVGSVGElement>) => {
   return (
-    <div style={{ color: 'red' }}>
+    <div style={{ color: 'green' }}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="24"
@@ -10,13 +12,12 @@ export const NotIcon = (props: React.SVGProps<SVGSVGElement>) => {
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="3"
+        strokeWidth="4"
         strokeLinecap="round"
         strokeLinejoin="round"
         {...props}
       >
-        <path d="M18 6 6 18" />
-        <path d="m6 6 12 12" />
+        <path d="M20 6 9 17l-5-5" />
       </svg>
     </div>
   );

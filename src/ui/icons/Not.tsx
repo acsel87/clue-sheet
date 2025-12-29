@@ -1,23 +1,24 @@
+// src/ui/icons/Not.tsx
+
 import React from 'react';
 
-export const MaybeIcon = (props: React.SVGProps<SVGSVGElement>) => {
+export const NotIcon = (props: React.SVGProps<SVGSVGElement>) => {
   return (
-    <div>
+    <div style={{ color: 'red' }}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="24"
         height="24"
         viewBox="0 0 24 24"
-        fill="purple"
+        fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
         {...props}
       >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-        <path d="M12 17h.01" />
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
       </svg>
     </div>
   );
