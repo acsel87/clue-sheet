@@ -55,7 +55,7 @@ export default defineConfig({
        * The plugin docs describe devOptions.enabled for this purpose.
        */
       devOptions: {
-        enabled: true,
+        enabled: false, // Set false for deployed app; true for local testing of SW features
       },
 
       /**
@@ -63,7 +63,7 @@ export default defineConfig({
        * Keep it simple for now; we can refine when we implement offline behavior.
        */
       workbox: {
-        navigateFallback: "/index.html",
+        navigateFallback: "/clue-sheet/index.html",
       },
     }),
   ],
