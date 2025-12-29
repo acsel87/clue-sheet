@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  base: "/clue-sheet/",
   plugins: [
     react(),
     VitePWA({
@@ -11,6 +12,8 @@ export default defineConfig({
        * friend-only app where you want people to receive updates without prompts.
        */
       registerType: "autoUpdate",
+      // For GH Pages subpath hosting:
+      scope: "/clue-sheet/",
 
       /**
        * includeAssets is for extra static assets in /public (favicons, fonts, etc.).
@@ -25,21 +28,21 @@ export default defineConfig({
         theme_color: "#111827",
         background_color: "#111827",
         display: "standalone",
-        start_url: "/",
-        scope: "/",
+        start_url: "/clue-sheet/",
+        scope: "/clue-sheet/",
         icons: [
           {
-            src: "/icon-192.png",
+            src: "/clue-sheet/icon-192.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/icon-512.png",
+            src: "/clue-sheet/icon-512.png",
             sizes: "512x512",
             type: "image/png",
           },
           {
-            src: "/icon-512.png",
+            src: "/clue-sheet/icon-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any maskable",
