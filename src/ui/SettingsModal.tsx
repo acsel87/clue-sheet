@@ -178,7 +178,7 @@ export function SettingsModal(props: Props) {
           {playersSorted.map((p) => {
             const label = p.id === 1 ? "Current player" : `Player ${p.id}`;
             const showMinus = p.id >= 3;
-            const showPlusOnThisRow = p.id >= 2 && p.id === playersSorted[playersSorted.length - 1].id && canAdd;
+            const showPlusOnThisRow = p.id >= 2 && p.id === playersSorted[playersSorted.length - 1]?.id && canAdd;
 
             return (
               <div key={p.id} className="playerRow">
