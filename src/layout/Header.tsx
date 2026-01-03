@@ -1,11 +1,19 @@
 // src/layout/Header.tsx
-import "../index.css"
 
-export function Header() {
+type Props = {
+  onOpenSettings: () => void;
+};
+
+export function Header({ onOpenSettings }: Props) {
   return (
     <header className="topbar">
-      <h1 className="title">Clue Sheet</h1>
-      <div className="subtitle">Static skeleton (next: state + transactions)</div>
+      <div className="topbarRow">
+        <h1 className="title">Clue Sheet</h1>
+        <button type="button" className="iconButton" onClick={onOpenSettings} aria-label="Open settings">
+          ⚙︎
+        </button>
+      </div>
+      <div className="subtitle">Settings + public lock scaffolding (next: full grid engine)</div>
     </header>
-  )
+  );
 }

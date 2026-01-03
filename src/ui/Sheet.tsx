@@ -1,53 +1,145 @@
 // src/ui/Sheet.tsx
 
-import { cardsByCategory, CATEGORIES } from "../domain"
-import "../index.css"
+import type { CardId, CategoryId, ThemeId } from "../domain/themes";
+import { CATEGORIES, cardsByCategory } from "../domain/themes";
 
-const DEFAULT_PLAYERS = ["P1", "P2", "P3"];
+const PLACEHOLDER_COL_COUNT = 26;
 
-export function Sheet() {
+type Props = {
+  themeId: ThemeId;
+  publicCount: number;
+  publicLocked: boolean;
+  publicSelected: ReadonlyArray<CardId>;
+  onTogglePublicCard: (cardId: CardId) => void;
+  onLockPublic: () => void;
+};
+
+type CSSVarStyle = React.CSSProperties & {
+  ["--mark-cols"]?: string;
+};
+
+const gridStyle: CSSVarStyle = {
+  ["--mark-cols"]: String(PLACEHOLDER_COL_COUNT),
+};
+
+export function Sheet(props: Props) {
+  const { themeId, publicCount, publicLocked, publicSelected, onTogglePublicCard, onLockPublic } = props;
+
+  const cols = Array.from({ length: PLACEHOLDER_COL_COUNT }, (_, i) => i + 1);
+  const selectedSet = new Set<number>(publicSelected);
+
+  const needsPublicLock = publicCount > 0;
+  const isSelectionComplete = publicSelected.length === publicCount;
+
   return (
-    <section className="sheet" aria-label="Deduction sheet">
-      <div className="sheetHeader">
-        <div className="cell cardColHeader">Card</div>
-        <div className="cell publicHeader">Public</div>
+    <div className="sheetScroll" aria-label="Sheet scroll container">
+      {needsPublicLock && (
+        <div className="publicBar" role="region" aria-label="Public cards selection">
+          <div className="publicBarLeft">
+            <span className="publicBarTitle">Public cards</span>
+            <span className="publicBarMeta">
+              {publicLocked ? "Locked" : "Unlocked"} • {publicSelected.length}/{publicCount} selected
+            </span>
+          </div>
 
-        {DEFAULT_PLAYERS.map((p) => (
-          <div key={p} className="playerHeader">
-            <div className="cell playerName">{p}</div>
-            <div className="cell factHeader">Fact</div>
-            <div className="cell maybeHeader">Maybe…</div>
+          {!publicLocked ? (
+            <button
+              type="button"
+              className="button primary"
+              disabled={!isSelectionComplete}
+              onClick={onLockPublic}
+              aria-disabled={!isSelectionComplete}
+              title={isSelectionComplete ? "Lock public cards" : "Select all public cards first"}
+            >
+              Lock
+            </button>
+          ) : (
+            <span className="publicLockedPill">Locked</span>
+          )}
+        </div>
+      )}
+
+      <div className="zoomGrid" style={gridStyle} aria-label="Placeholder grid for zoom testing">
+        {/* Header row */}
+        <div className="zgCell zgHeader zgCardHeader">Card</div>
+        {cols.map((n) => (
+          <div key={n} className="zgCell zgHeader">
+            C{n}
           </div>
         ))}
+
+        {CATEGORIES.map((cat) => (
+          <CategoryBlock
+            key={cat.id}
+            themeId={themeId}
+            category={cat.id}
+            label={cat.label}
+            cols={cols}
+            publicCount={publicCount}
+            publicLocked={publicLocked}
+            selectedSet={selectedSet}
+            onTogglePublicCard={onTogglePublicCard}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CategoryBlock(props: {
+  themeId: ThemeId;
+  category: CategoryId;
+  label: string;
+  cols: number[];
+  publicCount: number;
+  publicLocked: boolean;
+  selectedSet: ReadonlySet<number>;
+  onTogglePublicCard: (cardId: CardId) => void;
+}) {
+  const { themeId, category, label, cols, publicCount, publicLocked, selectedSet, onTogglePublicCard } = props;
+
+  return (
+    <div className="zgCategoryBlock">
+      <div className="zgCategoryTitle" style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
+        {label}
       </div>
 
-      {CATEGORIES.map((cat) => (
-        <section key={cat.id} className="category">
-          <h2 className="categoryTitle">{cat.label}</h2>
+      {cardsByCategory(themeId, category).map((card) => {
+        const isSelected = selectedSet.has(card.id);
+        const needsPublicLock = publicCount > 0;
+        const canSelect = needsPublicLock && !publicLocked;
 
-          <div className="grid">
-            {cardsByCategory(cat.id).map((card) => (
-              <div key={card.id} className="row">
-                <div className="cell cardCell">
-                  <span className="cardId">{card.id}</span>
-                  <span className="cardName">{card.name}</span>
-                </div>
+        return (
+          <div key={card.id} className="zgRow" style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
+            <button
+              type="button"
+              className={[
+                "zgCell",
+                "zgCardCell",
+                canSelect ? "zgCardCellSelectable" : "",
+                isSelected ? "zgCardCellSelected" : "",
+                needsPublicLock && !publicLocked ? "zgCardCellAttention" : "",
+              ].join(" ")}
+              onClick={() => {
+                if (!canSelect) return;
+                onTogglePublicCard(card.id);
+              }}
+              disabled={!canSelect}
+              aria-disabled={!canSelect}
+              title={canSelect ? "Select/deselect as public" : undefined}
+            >
+              <span className="zgCardId">{card.id}</span>
+              <span className="zgCardName">{card.name}</span>
+            </button>
 
-                <div className="cell publicCell" aria-label="Public mark">
-                  ➕
-                </div>
-
-                {DEFAULT_PLAYERS.map((p) => (
-                  <div key={p} className="playerCells">
-                    <div className="cell factCell">➕</div>
-                    <div className="cell maybeCell">➕</div>
-                  </div>
-                ))}
+            {cols.map((n) => (
+              <div key={n} className="zgCell zgMarkCell" aria-hidden="true">
+                ➕
               </div>
             ))}
           </div>
-        </section>
-      ))}
-    </section>
+        );
+      })}
+    </div>
   );
 }

@@ -1,3 +1,9 @@
+/* src/index.css */
+
+/* =========================
+   Design tokens / globals
+   ========================= */
+
 :root {
   --bg: #0b0f17;
   --panel: #111827;
@@ -9,10 +15,12 @@
 * {
   box-sizing: border-box;
 }
+
 html,
 body {
   height: 100%;
 }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -20,100 +28,164 @@ body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
+/* =========================
+   App shell
+   ========================= */
+
 .app {
   padding: 12px;
   max-width: 980px;
   margin: 0 auto;
 }
+
 .topbar {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-bottom: 12px;
 }
+
+.topbarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .title {
   font-size: 20px;
   margin: 0;
 }
+
 .subtitle {
   font-size: 12px;
   color: var(--muted);
 }
 
+/* =========================
+   Sheet container
+   ========================= */
+
 .sheet {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+
+  /* critical for wide / zoomed grids */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.sheetHeader {
-  display: grid;
-  grid-template-columns: 1fr 72px repeat(3, 180px);
-  border-bottom: 1px solid var(--border);
+.sheetScroll {
+  padding: 8px;
+  min-width: 100%;
 }
 
-.cell {
-  padding: 10px 8px;
-  border-right: 1px solid var(--border);
+/* =========================
+   Public cards bar
+   ========================= */
+
+.publicBar {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  min-height: 44px;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.cardColHeader,
-.cardCell {
-  justify-content: flex-start;
+.publicBarLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.publicHeader {
+
+.publicBarTitle {
   font-weight: 600;
 }
 
-.playerHeader {
-  display: grid;
-  grid-template-rows: auto auto auto;
-  border-right: 1px solid var(--border);
-}
-.playerName {
-  justify-content: center;
-  font-weight: 600;
-}
-.factHeader,
-.maybeHeader {
+.publicBarMeta {
   font-size: 12px;
   color: var(--muted);
 }
 
-.category {
-  padding: 8px 0 2px;
+.publicLockedPill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--muted);
 }
-.categoryTitle {
-  margin: 10px 12px 8px;
-  font-size: 14px;
+
+/* =========================
+   Zoom / placeholder grid
+   ========================= */
+
+.zoomGrid {
+  /* 1 card column + N mark columns */
+  display: grid;
+  grid-template-columns: 240px repeat(var(--mark-cols), 44px);
+  width: max-content;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.zgCell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  min-height: 40px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.zgHeader {
+  font-size: 12px;
   color: var(--muted);
   font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.grid {
-  display: flex;
-  flex-direction: column;
-}
-.row {
-  display: grid;
-  grid-template-columns: 1fr 72px repeat(3, 180px);
-  border-top: 1px solid var(--border);
-}
-.row:first-child {
-  border-top: 0;
+.zgCardHeader {
+  justify-content: flex-start;
+  padding-left: 10px;
 }
 
-.cardCell {
+/* allow category titles + rows to participate in main grid */
+.zgCategoryBlock,
+.zgRow {
+  display: contents;
+}
+
+.zgCategoryTitle {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Card/name cell (button semantics) */
+.zgCardCell {
+  justify-content: flex-start;
   gap: 10px;
+  padding-left: 10px;
+
+  border: none;
+  background: transparent;
+  color: var(--text);
+  width: 100%;
+  text-align: left;
 }
-.cardId {
-  width: 28px;
-  height: 28px;
+
+.zgCardId {
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--border);
   border-radius: 8px;
   display: inline-flex;
@@ -122,34 +194,172 @@ body {
   color: var(--muted);
   font-size: 12px;
 }
-.cardName {
+
+.zgCardName {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.zgMarkCell {
   font-size: 14px;
 }
 
-.playerCells {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-.playerCells .cell {
-  border-right: 1px solid var(--border);
-}
-.playerCells .cell:last-child {
-  border-right: 0;
+/* interactive states */
+.zgCardCellSelectable {
+  cursor: pointer;
 }
 
-@media (max-width: 840px) {
-  .sheetHeader,
-  .row {
-    grid-template-columns: 1fr 64px repeat(3, 160px);
-  }
+.zgCardCellSelectable:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
+
+.zgCardCellSelected {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: -2px;
+}
+
+.zgCardCellAttention {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* =========================
+   Modal (native <dialog>)
+   ========================= */
+
+.modal {
+  width: min(560px, calc(100vw - 24px));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0;
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 16px;
+}
+
+.modalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.twoCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.modalFooter {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+/* =========================
+   Buttons / inputs
+   ========================= */
+
+.iconButton,
+.button,
+.smallButton {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 10px;
+}
+
+.iconButton {
+  padding: 6px 10px;
+}
+
+.button {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.button.primary {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.button.secondary {
+  background: transparent;
+}
+
+.smallButton {
+  padding: 8px 10px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+input,
+select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+/* keyboard accessibility */
+.iconButton:focus-visible,
+.button:focus-visible,
+.smallButton:focus-visible,
+.zgCardCellSelectable:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+}
+
+/* =========================
+   Responsive tweak
+   ========================= */
 
 @media (max-width: 720px) {
   .app {
     padding: 10px;
   }
-  .sheetHeader,
-  .row {
-    grid-template-columns: 1fr 60px repeat(3, 140px);
+
+  .zoomGrid {
+    grid-template-columns: 200px repeat(var(--mark-cols), 44px);
   }
 }
