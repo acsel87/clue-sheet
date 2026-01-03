@@ -25,6 +25,7 @@ export default defineConfig({
         name: "Clue Sheet",
         short_name: "Clue Sheet",
         description: "Advanced Clue/Cluedo deduction sheet",
+        orientation: "portrait",
         theme_color: "#111827",
         background_color: "#111827",
         display: "standalone",
@@ -64,6 +65,19 @@ export default defineConfig({
        */
       workbox: {
         navigateFallback: "/clue-sheet/index.html",
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-cache",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
+            },
+          },
+        ],
       },
     }),
   ],

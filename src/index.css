@@ -70,15 +70,17 @@ body {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
-
-  /* critical for wide / zoomed grids */
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 140px);
 }
 
 .sheetScroll {
   padding: 8px;
   min-width: 100%;
+  overflow: visible;
+  flex: 1;
 }
 
 /* =========================
@@ -119,17 +121,18 @@ body {
 }
 
 /* =========================
-   Zoom / placeholder grid
+   Zoom / placeholder grid with STICKY HEADERS
    ========================= */
 
 .zoomGrid {
-  /* 1 card column + N mark columns */
   display: grid;
-  grid-template-columns: 240px repeat(var(--mark-cols), 44px);
+  grid-template-columns: 100px repeat(var(--mark-cols), 44px);
   width: max-content;
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
+  overflow: auto;
+  max-height: calc(100vh - 180px);
+  position: relative;
 }
 
 .zgCell {
@@ -143,16 +146,67 @@ body {
   user-select: none;
 }
 
+/* STICKY HEADER ROW - Top horizontal headers */
 .zgHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   font-size: 12px;
   color: var(--muted);
   font-weight: 600;
   background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
 }
 
+/* STICKY CARD COLUMN - Left vertical headers (card names) */
+.zgCardCell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 0;
+  background: var(--panel);
+  justify-content: flex-start;
+  gap: 10px;
+  padding-left: 10px;
+  color: var(--text);
+  text-align: left;
+}
+
+/* TOP-LEFT CORNER CELL - Highest z-index */
 .zgCardHeader {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  min-width: 0;
   justify-content: flex-start;
   padding-left: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+}
+
+.zgCardId {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.zgCardName {
+  font-size: 11px;
+  white-space: wrap;
+  max-width: 40%;
+}
+
+.zgMarkCell {
+  font-size: 14px;
+  background: transparent;
 }
 
 /* allow category titles + rows to participate in main grid */
@@ -168,40 +222,6 @@ body {
   font-weight: 600;
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid var(--border);
-}
-
-/* Card/name cell (button semantics) */
-.zgCardCell {
-  justify-content: flex-start;
-  gap: 10px;
-  padding-left: 10px;
-
-  border: none;
-  background: transparent;
-  color: var(--text);
-  width: 100%;
-  text-align: left;
-}
-
-.zgCardId {
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.zgCardName {
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.zgMarkCell {
-  font-size: 14px;
 }
 
 /* interactive states */
@@ -220,6 +240,100 @@ body {
 
 .zgCardCellAttention {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.zgCardCellReadOnly {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* =========================
+   Overview Mode Button
+   ========================= */
+
+.overviewButton {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  font-size: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.overviewButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+
+.overviewButton:active {
+  transform: translateY(0);
+}
+
+/* =========================
+   Overview Modal
+   ========================= */
+
+.overviewModal {
+  max-width: 95vw;
+  max-height: 95vh;
+  width: auto;
+  height: auto;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0;
+  overflow: hidden;
+}
+
+.overviewModal::backdrop {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+.overviewModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.overviewModalTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.overviewContainer {
+  overflow: auto;
+  max-height: calc(95vh - 140px);
+  padding: 20px;
+}
+
+.overviewContent {
+  transform-origin: top left;
+  transition: transform 0.3s ease-out;
+  pointer-events: none;
+}
+
+.overviewGrid {
+  overflow: visible;
+  max-height: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.overviewModalFooter {
+  display: flex;
+  justify-content: center;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* =========================
@@ -304,6 +418,7 @@ body {
   background: transparent;
   color: var(--text);
   border-radius: 10px;
+  cursor: pointer;
 }
 
 .iconButton {
@@ -321,6 +436,11 @@ body {
 
 .button.secondary {
   background: transparent;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .smallButton {
@@ -351,7 +471,7 @@ select:focus-visible {
 }
 
 /* =========================
-   Responsive tweak
+   Responsive tweaks
    ========================= */
 
 @media (max-width: 720px) {
@@ -360,6 +480,23 @@ select:focus-visible {
   }
 
   .zoomGrid {
-    grid-template-columns: 200px repeat(var(--mark-cols), 44px);
+    grid-template-columns: 120px repeat(var(--mark-cols), 44px);
+  }
+
+  .overviewButton {
+    bottom: 16px;
+    right: 16px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-height: 700px) {
+  .zoomGrid {
+    max-height: calc(100vh - 160px);
+  }
+
+  .overviewContainer {
+    max-height: calc(95vh - 120px);
   }
 }
