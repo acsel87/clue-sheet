@@ -2,16 +2,16 @@
 
 import styles from "./ActionBar.module.css";
 
-type Props = {
-  onUndo?: () => void;
+type ActionBarProps = {
+  onUndo?: (() => void) | undefined;
   onOverview: () => void;
-  onSettings?: () => void;
+  onSettings?: (() => void) | undefined;
 };
 
-export function ActionBar({ onUndo, onOverview, onSettings }: Props) {
+export function ActionBar({ onUndo, onOverview, onSettings }: ActionBarProps) {
   return (
     <div className={styles.actionBar}>
-      {onUndo &&
+      {onUndo && (
         <button
           type="button"
           className={`button secondary ${styles.actionButton}`}
@@ -21,7 +21,7 @@ export function ActionBar({ onUndo, onOverview, onSettings }: Props) {
         >
           ↶ Undo
         </button>
-      }
+      )}
 
       <button
         type="button"
@@ -33,7 +33,7 @@ export function ActionBar({ onUndo, onOverview, onSettings }: Props) {
         🗺️
       </button>
 
-      {onSettings &&
+      {onSettings && (
         <button
           type="button"
           className={`button secondary ${styles.actionButton}`}
@@ -43,7 +43,7 @@ export function ActionBar({ onUndo, onOverview, onSettings }: Props) {
         >
           ⚙︎
         </button>
-      }
+      )}
     </div>
   );
 }

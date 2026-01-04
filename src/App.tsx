@@ -1,9 +1,7 @@
 // src/App.tsx
 
 import { useState } from "react";
-import { Sheet } from "./ui/Sheet";
-import { ActionBar } from "./ui/ActionBar";
-import { SettingsModal } from "./ui/SettingsModal";
+import { Sheet, SettingsModal } from "./ui";
 import type { AppConfig } from "./domain/config";
 import { loadConfig } from "./infra/configStorage";
 import { loadGridPublic, saveGridPublic, clearGridPublic } from "./infra/gridPublicStorage";
@@ -77,11 +75,7 @@ export function App() {
         onLockPublic={lockPublic}
         overviewOpen={overviewOpen}
         onOverviewChange={setOverviewOpen}
-      />
-
-      <ActionBar
         onUndo={handleUndo}
-        onOverview={() => setOverviewOpen(true)}
         onSettings={openSettings}
       />
 

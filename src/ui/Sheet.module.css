@@ -1,7 +1,14 @@
-/* src/ui/Sheet.module.css */
+/* src/ui/Sheet.module.css
 
-/* Container */
-.container {
+/* Sheet Container - Wraps both views */
+.sheetContainer {
+  position: relative;
+  min-height: calc(100vh - 160px);
+  margin-bottom: 80px; /* Space for ActionBar */
+}
+
+/* Main View */
+.mainView {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -9,7 +16,6 @@
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 160px);
-  margin-bottom: 80px; /* Space for action bar */
 }
 
 /* Public Bar */
@@ -47,7 +53,7 @@
   color: var(--muted);
 }
 
-/* Grid */
+/* Grid (shared between both views) */
 .grid {
   display: grid;
   grid-template-columns: 100px repeat(var(--player-cols), 44px);
@@ -69,7 +75,7 @@
   user-select: none;
 }
 
-/* Sticky header row */
+/* Sticky header row (only in main view) */
 .headerCell {
   position: sticky;
   top: 0;
@@ -81,7 +87,7 @@
   backdrop-filter: blur(8px);
 }
 
-/* Sticky card column */
+/* Sticky card column (only in main view) */
 .cardCell {
   position: sticky;
   left: 0;
@@ -100,19 +106,6 @@
 .cornerCell {
   z-index: 4;
   background: rgba(17, 24, 39, 0.95);
-}
-
-.cardId {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 11px;
-  flex-shrink: 0;
 }
 
 .cardName {
@@ -143,7 +136,7 @@
   align-items: center;
 }
 
-/* Interactive states */
+/* Interactive states (main view only) */
 .selectable {
   cursor: pointer;
 }
@@ -166,42 +159,37 @@
   pointer-events: none;
 }
 
-/* Overview Modal */
-.overviewModal {
-  max-width: 100vw;
-  max-height: 100vh;
-  width: 100vw;
-  height: 100vh;
-  border: none;
-  border-radius: 0;
-  background: var(--panel);
-  color: var(--text);
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-}
+/* ========================================
+   OVERVIEW MODE - Fullscreen overlay
+   ======================================== */
 
-.overviewModal::backdrop {
-  background: rgba(0, 0, 0, 0.9);
-}
-
-.overviewTitle {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+.overviewMode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
 }
 
 .overviewContainer {
+  flex: 1;
   overflow: hidden;
-  height: calc(100vh - 64px);
   position: relative;
-  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .overviewContent {
-  /* position: absolute;
+  position: absolute;
   top: 0;
-  left: 0; */
+  left: 0;
+  width: max-content;
+  height: max-content;
   transition: transform 0.2s ease-out;
   pointer-events: none;
 }
@@ -211,6 +199,7 @@
   max-height: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   border-radius: 8px;
+  background: var(--panel);
 }
 
 /* Remove sticky positioning in overview mode */
@@ -219,18 +208,6 @@
 .overviewGrid .cornerCell {
   position: static;
   z-index: auto;
-}
-
-.overviewFooter {
-  display: flex;
-  justify-content: center;
-  padding: 10px;
-  border-top: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.actionButton {
-  min-width: 80px;
 }
 
 @media (max-width: 720px) {

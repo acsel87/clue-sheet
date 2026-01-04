@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import type { CardId, CategoryId, ThemeId } from "../domain/themes";
 import { CATEGORIES, cardsByCategory } from "../domain/themes";
+import { ActionBar } from "./ActionBar";
 import styles from "./Sheet.module.css";
 
 const PLAYER_COL_COUNT = 6;
@@ -16,11 +17,10 @@ type Props = {
   onLockPublic: () => void;
   overviewOpen: boolean;
   onOverviewChange: (open: boolean) => void;
+  onUndo?: (() => void) | undefined;
+  onSettings?: (() => void) | undefined;
 };
 
-/**
- * Custom hook for calculating optimal scale using ResizeObserver
- */
 function useGridScale(
   gridRef: React.RefObject<HTMLDivElement | null>,
   overviewMode: boolean
@@ -29,7 +29,6 @@ function useGridScale(
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Don't call setState when overviewMode becomes false
     if (!overviewMode) return;
 
     const el = gridRef.current;
@@ -46,8 +45,8 @@ function useGridScale(
       const viewportH = vv?.height ?? window.innerHeight;
       const viewportW = vv?.width ?? window.innerWidth;
 
-      // Reserve minimal space for modal header/footer (120px total)
-      const availableHeight = viewportH - 120;
+      // Reserve space for ActionBar at bottom (64px)
+      const availableHeight = viewportH - 80;
       const availableWidth = viewportW - 40;
 
       const scaleY = availableHeight / gridHeight;
@@ -55,7 +54,6 @@ function useGridScale(
 
       const optimalScale = Math.min(1, scaleX, scaleY);
 
-      // Calculate translation to center the scaled element
       const scaledWidth = gridWidth * optimalScale;
       const scaledHeight = gridHeight * optimalScale;
 
@@ -84,8 +82,6 @@ function useGridScale(
     };
   }, [overviewMode, gridRef]);
 
-  // Derive values during render instead of setState in effect
-  // This follows React 19 best practices for "Don't Sync State, Derive It"
   if (!overviewMode) {
     return { scale: 1, translate: { x: 0, y: 0 } };
   }
@@ -94,11 +90,20 @@ function useGridScale(
 }
 
 export function Sheet(props: Props) {
-  const { themeId, publicCount, publicLocked, publicSelected, onTogglePublicCard, onLockPublic, overviewOpen, onOverviewChange } = props;
+  const {
+    themeId,
+    publicCount,
+    publicLocked,
+    publicSelected,
+    onTogglePublicCard,
+    onLockPublic,
+    overviewOpen,
+    onOverviewChange,
+    onUndo,
+    onSettings
+  } = props;
 
   const gridRef = useRef<HTMLDivElement>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
   const { scale, translate } = useGridScale(gridRef, overviewOpen);
 
   const cols = Array.from({ length: PLAYER_COL_COUNT }, (_, i) => i + 1);
@@ -107,120 +112,112 @@ export function Sheet(props: Props) {
   const needsPublicLock = publicCount > 0;
   const isSelectionComplete = publicSelected.length === publicCount;
 
-  // Sync dialog state with overviewOpen prop
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (overviewOpen && !dialog.open) {
-      dialog.showModal();
-    } else if (!overviewOpen && dialog.open) {
-      dialog.close();
-    }
-  }, [overviewOpen]);
-
-  const handleDialogClose = () => {
-    onOverviewChange(false);
-  };
-
   return (
-    <>
-      <div className={styles.container} role="region" aria-label="Score sheet">
-        {needsPublicLock && (
-          <div className={styles.publicBar} role="region" aria-label="Public cards selection">
-            <div className={styles.publicBarContent}>
-              <span className={styles.publicBarTitle}>Public cards</span>
-              <span className={styles.publicBarMeta}>
-                {publicLocked ? "Locked" : "Unlocked"} • {publicSelected.length}/{publicCount} selected
-              </span>
+    <div className={styles.sheetContainer}>
+      {/* Conditionally render EITHER MainView OR OverView */}
+      {!overviewOpen ? (
+        /* MAIN VIEW */
+        <div className={styles.mainView} role="region" aria-label="Score sheet">
+          {needsPublicLock && (
+            <div className={styles.publicBar} role="region" aria-label="Public cards selection">
+              <div className={styles.publicBarContent}>
+                <span className={styles.publicBarTitle}>Public cards</span>
+                <span className={styles.publicBarMeta}>
+                  {publicLocked ? "Locked" : "Unlocked"} • {publicSelected.length}/{publicCount} selected
+                </span>
+              </div>
+
+              {!publicLocked ? (
+                <button
+                  type="button"
+                  className="button primary"
+                  disabled={!isSelectionComplete}
+                  onClick={onLockPublic}
+                  aria-disabled={!isSelectionComplete}
+                  title={isSelectionComplete ? "Lock public cards" : "Select all public cards first"}
+                >
+                  Lock
+                </button>
+              ) : (
+                <span className={styles.publicLockedPill}>Locked</span>
+              )}
             </div>
+          )}
 
-            {!publicLocked ? (
-              <button
-                type="button"
-                className="button primary"
-                disabled={!isSelectionComplete}
-                onClick={onLockPublic}
-                aria-disabled={!isSelectionComplete}
-                title={isSelectionComplete ? "Lock public cards" : "Select all public cards first"}
-              >
-                Lock
-              </button>
-            ) : (
-              <span className={styles.publicLockedPill}>Locked</span>
-            )}
-          </div>
-        )}
-
-        <div
-          ref={gridRef}
-          className={styles.grid}
-          style={{ "--player-cols": PLAYER_COL_COUNT } as React.CSSProperties}
-          aria-label="Interactive score sheet grid"
-        >
-          <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
-          {cols.map((n) => (
-            <div key={n} className={`${styles.cell} ${styles.headerCell}`}>
-              C{n}
-            </div>
-          ))}
-
-          {CATEGORIES.map((cat) => (
-            <CategoryBlock
-              key={cat.id}
-              themeId={themeId}
-              category={cat.id}
-              label={cat.label}
-              cols={cols}
-              publicCount={publicCount}
-              publicLocked={publicLocked}
-              selectedSet={selectedSet}
-              onTogglePublicCard={onTogglePublicCard}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Overview Modal */}
-      <dialog
-        ref={dialogRef}
-        className={styles.overviewModal}
-        aria-label="Score sheet overview"
-        onClose={handleDialogClose}
-      >
-        <div className={styles.overviewContainer}>
           <div
-            className={styles.overviewContent}
-            style={{
-              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-              transformOrigin: "0 0",
-            }}
+            ref={gridRef}
+            className={styles.grid}
+            style={{ "--player-cols": PLAYER_COL_COUNT } as React.CSSProperties}
+            aria-label="Interactive score sheet grid"
           >
-            <div
-              className={`${styles.grid} ${styles.overviewGrid}`}
-            >
-              <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
-              {cols.map((n) => (
-                <div key={n} className={`${styles.cell} ${styles.headerCell}`}>
-                  C{n}
-                </div>
-              ))}
+            <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
+            {cols.map((n) => (
+              <div key={n} className={`${styles.cell} ${styles.headerCell}`}>
+                C{n}
+              </div>
+            ))}
 
-              {CATEGORIES.map((cat) => (
-                <CategoryBlockReadOnly
-                  key={cat.id}
-                  themeId={themeId}
-                  category={cat.id}
-                  label={cat.label}
-                  cols={cols}
-                  selectedSet={selectedSet}
-                />
-              ))}
+            {CATEGORIES.map((cat) => (
+              <CategoryBlock
+                key={cat.id}
+                themeId={themeId}
+                category={cat.id}
+                label={cat.label}
+                cols={cols}
+                publicCount={publicCount}
+                publicLocked={publicLocked}
+                selectedSet={selectedSet}
+                onTogglePublicCard={onTogglePublicCard}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* OVERVIEW MODE */
+        <div className={styles.overviewMode} role="region" aria-label="Score sheet overview">
+          <div className={styles.overviewContainer}>
+            <div
+              className={styles.overviewContent}
+              style={{
+                transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+                transformOrigin: "0 0",
+              }}
+            >
+              <div
+                ref={gridRef}
+                className={`${styles.grid} ${styles.overviewGrid}`}
+                style={{ "--player-cols": PLAYER_COL_COUNT } as React.CSSProperties}
+              >
+                <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
+                {cols.map((n) => (
+                  <div key={n} className={`${styles.cell} ${styles.headerCell}`}>
+                    C{n}
+                  </div>
+                ))}
+
+                {CATEGORIES.map((cat) => (
+                  <CategoryBlockReadOnly
+                    key={cat.id}
+                    themeId={themeId}
+                    category={cat.id}
+                    label={cat.label}
+                    cols={cols}
+                    selectedSet={selectedSet}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </dialog>
-    </>
+      )}
+
+      {/* SINGLE ActionBar - Always present, changes behavior based on overviewOpen */}
+      <ActionBar
+        onUndo={!overviewOpen ? onUndo : undefined}
+        onOverview={() => onOverviewChange(!overviewOpen)}
+        onSettings={!overviewOpen ? onSettings : undefined}
+      />
+    </div>
   );
 }
 
