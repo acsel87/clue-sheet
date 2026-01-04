@@ -2,7 +2,7 @@
 
 import styles from "./ActionBar.module.css";
 
-type ActionBarProps = {
+export type ActionBarProps = {
   onUndo?: (() => void) | undefined;
   onOverview: () => void;
   onSettings?: (() => void) | undefined;
