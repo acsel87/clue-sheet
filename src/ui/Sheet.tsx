@@ -1,10 +1,11 @@
-// src/ui/Sheet.tsx
+// src/ui/Sheet.tsx - Advanced ResizeObserver Version
 
 import { useRef, useState, useEffect } from "react";
 import type { CardId, CategoryId, ThemeId } from "../domain/themes";
 import { CATEGORIES, cardsByCategory } from "../domain/themes";
+import styles from "./Sheet.module.css";
 
-const PLACEHOLDER_COL_COUNT = 6;
+const PLAYER_COL_COUNT = 6;
 
 type Props = {
   themeId: ThemeId;
@@ -13,19 +14,10 @@ type Props = {
   publicSelected: ReadonlyArray<CardId>;
   onTogglePublicCard: (cardId: CardId) => void;
   onLockPublic: () => void;
+  overviewOpen: boolean;
+  onOverviewChange: (open: boolean) => void;
 };
 
-type CSSVarStyle = React.CSSProperties & {
-  ["--mark-cols"]?: string;
-};
-
-const gridStyle: CSSVarStyle = {
-  ["--mark-cols"]: String(PLACEHOLDER_COL_COUNT),
-};
-
-/**
- * Custom hook for calculating optimal scale using ResizeObserver
- */
 function useGridScale(
   gridRef: React.RefObject<HTMLDivElement | null>,
   overviewMode: boolean
@@ -33,7 +25,7 @@ function useGridScale(
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    if (!overviewMode) return; // when not in overview, we will return 1 (no state update)
+    if (!overviewMode) return;
 
     const el = gridRef.current;
     if (!el) return;
@@ -42,7 +34,6 @@ function useGridScale(
       const node = gridRef.current;
       if (!node) return;
 
-      // Natural size of the grid content (not affected by CSS transform on outer containers)
       const gridHeight = node.scrollHeight;
       const gridWidth = node.scrollWidth;
 
@@ -50,7 +41,7 @@ function useGridScale(
       const viewportH = vv?.height ?? window.innerHeight;
       const viewportW = vv?.width ?? window.innerWidth;
 
-      // Replace magic numbers if you can: measure actual paddings/headers, or pass them in.
+      // Reserve space for modal padding and header
       const availableHeight = viewportH - 180;
       const availableWidth = viewportW - 80;
 
@@ -58,8 +49,6 @@ function useGridScale(
       const scaleX = availableWidth / gridWidth;
 
       const next = Math.min(1, scaleX, scaleY);
-
-      // Avoid redundant state updates (prevents extra renders)
       setScale((prev) => (Math.abs(prev - next) < 0.001 ? prev : next));
     };
 
@@ -69,8 +58,6 @@ function useGridScale(
     ro.observe(el);
 
     const onResize = () => calculateScale();
-
-    // visualViewport resize is particularly relevant on iOS when toolbars/pinch change the visual viewport
     window.visualViewport?.addEventListener("resize", onResize);
     window.addEventListener("resize", onResize);
     window.addEventListener("orientationchange", onResize);
@@ -81,50 +68,49 @@ function useGridScale(
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
     };
-  }, [overviewMode, gridRef]); // intentionally NOT depending on gridRef
+  }, [overviewMode, gridRef]);
 
-  // Key point: derive "scale = 1" in render when not in overview.
   return overviewMode ? scale : 1;
 }
 
 export function Sheet(props: Props) {
-  const { themeId, publicCount, publicLocked, publicSelected, onTogglePublicCard, onLockPublic } = props;
+  const { themeId, publicCount, publicLocked, publicSelected, onTogglePublicCard, onLockPublic, overviewOpen, onOverviewChange } = props;
 
-  const [overviewMode, setOverviewMode] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  // Custom hook handles all ref access in effects
-  const scale = useGridScale(gridRef, overviewMode);
+  const scale = useGridScale(gridRef, overviewOpen);
 
-  const cols = Array.from({ length: PLACEHOLDER_COL_COUNT }, (_, i) => i + 1);
+  const cols = Array.from({ length: PLAYER_COL_COUNT }, (_, i) => i + 1);
   const selectedSet = new Set<number>(publicSelected);
 
   const needsPublicLock = publicCount > 0;
   const isSelectionComplete = publicSelected.length === publicCount;
 
-  const toggleOverview = () => {
-    if (!overviewMode) {
-      dialogRef.current?.showModal();
-      setOverviewMode(true);
-    } else {
-      dialogRef.current?.close();
-      setOverviewMode(false);
+  // Sync dialog state with overviewOpen prop
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (overviewOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!overviewOpen && dialog.open) {
+      dialog.close();
     }
-  };
+  }, [overviewOpen]);
 
   const handleDialogClose = () => {
-    setOverviewMode(false);
+    onOverviewChange(false);
   };
 
   return (
     <>
-      <div className="sheetScroll" tabIndex={0} role="region" aria-label="Sheet scroll container">
+      <div className={styles.container} role="region" aria-label="Score sheet">
         {needsPublicLock && (
-          <div className="publicBar" role="region" aria-label="Public cards selection">
-            <div className="publicBarLeft">
-              <span className="publicBarTitle">Public cards</span>
-              <span className="publicBarMeta">
+          <div className={styles.publicBar} role="region" aria-label="Public cards selection">
+            <div className={styles.publicBarContent}>
+              <span className={styles.publicBarTitle}>Public cards</span>
+              <span className={styles.publicBarMeta}>
                 {publicLocked ? "Locked" : "Unlocked"} • {publicSelected.length}/{publicCount} selected
               </span>
             </div>
@@ -141,16 +127,20 @@ export function Sheet(props: Props) {
                 Lock
               </button>
             ) : (
-              <span className="publicLockedPill">Locked</span>
+              <span className={styles.publicLockedPill}>Locked</span>
             )}
           </div>
         )}
 
-        <div ref={gridRef} className="zoomGrid" style={gridStyle} aria-label="Interactive score sheet grid">
-          {/* Header row with sticky positioning */}
-          <div className="zgCell zgHeader zgCardHeader">Card</div>
+        <div
+          ref={gridRef}
+          className={styles.grid}
+          style={{ "--player-cols": PLAYER_COL_COUNT } as React.CSSProperties}
+          aria-label="Interactive score sheet grid"
+        >
+          <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
           {cols.map((n) => (
-            <div key={n} className="zgCell zgHeader">
+            <div key={n} className={`${styles.cell} ${styles.headerCell}`}>
               C{n}
             </div>
           ))}
@@ -171,50 +161,40 @@ export function Sheet(props: Props) {
         </div>
       </div>
 
-      {/* Overview Mode Button - Fixed position */}
-      <button
-        type="button"
-        className="button primary overviewButton"
-        onClick={toggleOverview}
-        aria-label={overviewMode ? "Return to normal view" : "Show overview mode"}
-        title={overviewMode ? "Return to normal view" : "View entire grid at once"}
-      >
-        {overviewMode ? "📍 Normal View" : "🗺️ Overview"}
-      </button>
-
       {/* Overview Modal */}
       <dialog
         ref={dialogRef}
-        className="modal overviewModal"
+        className={styles.overviewModal}
         aria-label="Score sheet overview"
         onClose={handleDialogClose}
       >
-        <div className="overviewModalHeader">
-          <h3 className="overviewModalTitle">Grid Overview</h3>
+        <div className={styles.overviewHeader}>
+          <h3 className={styles.overviewTitle}>Grid Overview</h3>
           <button
             type="button"
             className="iconButton"
-            onClick={toggleOverview}
+            onClick={() => onOverviewChange(false)}
             aria-label="Close overview"
           >
             ✕
           </button>
         </div>
 
-        <div className="overviewContainer">
+        <div className={styles.overviewContainer}>
           <div
-            className="overviewContent"
+            className={styles.overviewContent}
             style={{
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
           >
-            {/* Render read-only version of grid */}
-            <div className="zoomGrid overviewGrid" style={gridStyle}>
-              {/* Header row */}
-              <div className="zgCell zgHeader zgCardHeader">Card</div>
+            <div
+              className={`${styles.grid} ${styles.overviewGrid}`}
+              style={{ "--player-cols": PLAYER_COL_COUNT } as React.CSSProperties}
+            >
+              <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
               {cols.map((n) => (
-                <div key={n} className="zgCell zgHeader">
+                <div key={n} className={`${styles.cell} ${styles.headerCell}`}>
                   C{n}
                 </div>
               ))}
@@ -233,9 +213,9 @@ export function Sheet(props: Props) {
           </div>
         </div>
 
-        <div className="overviewModalFooter">
-          <button type="button" className="button secondary" onClick={toggleOverview}>
-            Close Overview
+        <div className={styles.overviewFooter}>
+          <button type="button" className="button secondary" onClick={() => onOverviewChange(false)}>
+            Close
           </button>
         </div>
       </dialog>
@@ -243,7 +223,6 @@ export function Sheet(props: Props) {
   );
 }
 
-// Interactive category block for main grid
 function CategoryBlock(props: {
   themeId: ThemeId;
   category: CategoryId;
@@ -257,8 +236,8 @@ function CategoryBlock(props: {
   const { themeId, category, label, cols, publicCount, publicLocked, selectedSet, onTogglePublicCard } = props;
 
   return (
-    <div className="zgCategoryBlock">
-      <div className="zgCategoryTitle" style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
+    <>
+      <div className={styles.categoryTitle} style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
         {label}
       </div>
 
@@ -268,16 +247,11 @@ function CategoryBlock(props: {
         const canSelect = needsPublicLock && !publicLocked;
 
         return (
-          <div key={card.id} className="zgRow" style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
+          <div key={card.id} className={styles.row} style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
             <button
               type="button"
-              className={[
-                "zgCell",
-                "zgCardCell",
-                canSelect ? "zgCardCellSelectable" : "",
-                isSelected ? "zgCardCellSelected" : "",
-                needsPublicLock && !publicLocked ? "zgCardCellAttention" : "",
-              ].join(" ")}
+              className={`${styles.cell} ${styles.cardCell} ${canSelect ? styles.selectable : ""} ${isSelected ? styles.selected : ""
+                } ${needsPublicLock && !publicLocked ? styles.attention : ""}`}
               onClick={() => {
                 if (!canSelect) return;
                 onTogglePublicCard(card.id);
@@ -286,22 +260,21 @@ function CategoryBlock(props: {
               aria-disabled={!canSelect}
               title={canSelect ? "Select/deselect as public" : undefined}
             >
-              <span className="zgCardName">{card.name}</span>
+              <span className={styles.cardName}>{card.name}</span>
             </button>
 
             {cols.map((n) => (
-              <div key={n} className="zgCell zgMarkCell" aria-hidden="true">
+              <div key={n} className={`${styles.cell} ${styles.markCell}`} aria-hidden="true">
                 ➕
               </div>
             ))}
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
 
-// Read-only category block for overview mode
 function CategoryBlockReadOnly(props: {
   themeId: ThemeId;
   category: CategoryId;
@@ -312,8 +285,8 @@ function CategoryBlockReadOnly(props: {
   const { themeId, category, label, cols, selectedSet } = props;
 
   return (
-    <div className="zgCategoryBlock">
-      <div className="zgCategoryTitle" style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
+    <>
+      <div className={styles.categoryTitle} style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
         {label}
       </div>
 
@@ -321,27 +294,23 @@ function CategoryBlockReadOnly(props: {
         const isSelected = selectedSet.has(card.id);
 
         return (
-          <div key={card.id} className="zgRow" style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
+          <div key={card.id} className={styles.row} style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
             <div
-              className={[
-                "zgCell",
-                "zgCardCell",
-                "zgCardCellReadOnly",
-                isSelected ? "zgCardCellSelected" : "",
-              ].join(" ")}
+              className={`${styles.cell} ${styles.cardCell} ${styles.readOnly} ${isSelected ? styles.selected : ""
+                }`}
             >
-              <span className="zgCardId">{card.id}</span>
-              <span className="zgCardName">{card.name}</span>
+              <span className={styles.cardId}>{card.id}</span>
+              <span className={styles.cardName}>{card.name}</span>
             </div>
 
             {cols.map((n) => (
-              <div key={n} className="zgCell zgMarkCell" aria-hidden="true">
+              <div key={n} className={`${styles.cell} ${styles.markCell}`} aria-hidden="true">
                 ➕
               </div>
             ))}
           </div>
         );
       })}
-    </div>
+    </>
   );
 }

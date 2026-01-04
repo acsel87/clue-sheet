@@ -49,11 +49,11 @@ export type ThemeId = (typeof THEMES)[number]["id"];
 const CARDS_ONE_PIECE: ReadonlyArray<Card> = [
   // Straw Hat Crew (1..6)
   { id: 1, name: "Luffy", category: "suspects" },
-  { id: 2, name: "Nami or Usopp", category: "suspects" },
-  { id: 3, name: "Robin or Franky", category: "suspects" },
+  { id: 2, name: "Nami/ Usopp", category: "suspects" },
+  { id: 3, name: "Robin/ Franky", category: "suspects" },
   { id: 4, name: "Sanji", category: "suspects" },
   { id: 5, name: "Zoro", category: "suspects" },
-  { id: 6, name: "Chopper or Brook", category: "suspects" },
+  { id: 6, name: "Chopper/ Brook", category: "suspects" },
 
   // Treasures (7..12) — keep your corrected list here
   { id: 7, name: "Treasure Chest", category: "weapons" },
@@ -64,13 +64,13 @@ const CARDS_ONE_PIECE: ReadonlyArray<Card> = [
   { id: 12, name: "Sword", category: "weapons" },
 
   // Islands (13..21) — keep your corrected list here
-  { id: 13, name: "Land of Wano", category: "rooms" },
-  { id: 14, name: "Fish-Man Island", category: "rooms" },
+  { id: 13, name: "LandOf Wano", category: "rooms" },
+  { id: 14, name: "FishMan Island", category: "rooms" },
   { id: 15, name: "Dressrosa", category: "rooms" },
   { id: 16, name: "Punk Hazard", category: "rooms" },
   { id: 17, name: "Drum Kingdom", category: "rooms" },
   { id: 18, name: "Marineford", category: "rooms" },
-  { id: 19, name: "Whole Cake Island", category: "rooms" },
+  { id: 19, name: "Whole Cake", category: "rooms" },
   { id: 20, name: "Amazon Lily", category: "rooms" },
   { id: 21, name: "Water Seven", category: "rooms" },
 ] as const;
@@ -94,14 +94,14 @@ const CARDS_HARRY_POTTER: ReadonlyArray<Card> = [
 
   // LOCATION (13..21)
   { id: 13, name: "Malfoy Manor", category: "rooms" },
-  { id: 14, name: "The Hog's Head", category: "rooms" },
-  { id: 15, name: "The Shrieking Shack", category: "rooms" },
+  { id: 14, name: "Hog's Head", category: "rooms" },
+  { id: 15, name: "Shrieking Shack", category: "rooms" },
   { id: 16, name: "Hogwarts Castle", category: "rooms" },
   { id: 17, name: "Forbidden Forest", category: "rooms" },
   { id: 18, name: "Gringotts", category: "rooms" },
-  { id: 19, name: "Weasley's Wizard Wheezes", category: "rooms" },
-  { id: 20, name: "Ministry of Magic", category: "rooms" },
-  { id: 21, name: "12 Grimmauld Place", category: "rooms" },
+  { id: 19, name: "Weasley's Wheezes", category: "rooms" },
+  { id: 20, name: "Ministry Magic", category: "rooms" },
+  { id: 21, name: "Grimmauld Place", category: "rooms" },
 ] as const;
 
 export function getCards(themeId: ThemeId): ReadonlyArray<Card> {

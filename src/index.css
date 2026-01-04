@@ -1,9 +1,5 @@
 /* src/index.css */
 
-/* =========================
-   Design tokens / globals
-   ========================= */
-
 :root {
   --bg: #0b0f17;
   --panel: #111827;
@@ -26,320 +22,63 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  /* PWA safe area support */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-
-/* =========================
-   App shell
-   ========================= */
 
 .app {
   padding: 12px;
   max-width: 980px;
   margin: 0 auto;
+  min-height: 100vh;
 }
 
-.topbar {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.topbarRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.title {
-  font-size: 20px;
-  margin: 0;
-}
-
-.subtitle {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* =========================
-   Sheet container
-   ========================= */
-
-.sheet {
-  background: var(--panel);
+/* Global Button Styles */
+.iconButton,
+.button {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - 140px);
-}
-
-.sheetScroll {
-  padding: 8px;
-  min-width: 100%;
-  overflow: visible;
-  flex: 1;
-}
-
-/* =========================
-   Public cards bar
-   ========================= */
-
-.publicBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.publicBarLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.publicBarTitle {
-  font-weight: 600;
-}
-
-.publicBarMeta {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.publicLockedPill {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* =========================
-   Zoom / placeholder grid with STICKY HEADERS
-   ========================= */
-
-.zoomGrid {
-  display: grid;
-  grid-template-columns: 100px repeat(var(--mark-cols), 44px);
-  width: max-content;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: auto;
-  max-height: calc(100vh - 180px);
-  position: relative;
-}
-
-.zgCell {
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  min-height: 40px;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-}
-
-/* STICKY HEADER ROW - Top horizontal headers */
-.zgHeader {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(8px);
-}
-
-/* STICKY CARD COLUMN - Left vertical headers (card names) */
-.zgCardCell {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  min-width: 0;
-  background: var(--panel);
-  justify-content: flex-start;
-  gap: 10px;
-  padding-left: 10px;
+  background: transparent;
   color: var(--text);
-  text-align: left;
-}
-
-/* TOP-LEFT CORNER CELL - Highest z-index */
-.zgCardHeader {
-  position: sticky;
-  top: 0;
-  left: 0;
-  z-index: 4;
-  min-width: 0;
-  justify-content: flex-start;
-  padding-left: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(8px);
-}
-
-.zgCardId {
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.zgCardName {
-  font-size: 11px;
-  white-space: wrap;
-  max-width: 40%;
-}
-
-.zgMarkCell {
+  border-radius: 10px;
+  cursor: pointer;
   font-size: 14px;
+  padding: 10px 12px;
+  transition: all 0.15s ease;
+}
+
+.iconButton {
+  padding: 6px 10px;
+}
+
+.button.primary {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.button.primary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.button.secondary {
   background: transparent;
 }
 
-/* allow category titles + rows to participate in main grid */
-.zgCategoryBlock,
-.zgRow {
-  display: contents;
+.button.secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.zgCategoryTitle {
-  padding: 8px 10px;
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid var(--border);
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* interactive states */
-.zgCardCellSelectable {
-  cursor: pointer;
+.button:focus-visible,
+.iconButton:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
 }
 
-.zgCardCellSelectable:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.zgCardCellSelected {
-  outline: 2px solid rgba(255, 255, 255, 0.35);
-  outline-offset: -2px;
-}
-
-.zgCardCellAttention {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.zgCardCellReadOnly {
-  cursor: default;
-  pointer-events: none;
-}
-
-/* =========================
-   Overview Mode Button
-   ========================= */
-
-.overviewButton {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  font-size: 14px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-.overviewButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-}
-
-.overviewButton:active {
-  transform: translateY(0);
-}
-
-/* =========================
-   Overview Modal
-   ========================= */
-
-.overviewModal {
-  max-width: 95vw;
-  max-height: 95vh;
-  width: auto;
-  height: auto;
-  border: 2px solid var(--border);
-  border-radius: 16px;
-  background: var(--panel);
-  color: var(--text);
-  padding: 0;
-  overflow: hidden;
-}
-
-.overviewModal::backdrop {
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
-}
-
-.overviewModalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.overviewModalTitle {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.overviewContainer {
-  overflow: auto;
-  max-height: calc(95vh - 140px);
-  padding: 20px;
-}
-
-.overviewContent {
-  transform-origin: top left;
-  transition: transform 0.3s ease-out;
-  pointer-events: none;
-}
-
-.overviewGrid {
-  overflow: visible;
-  max-height: none;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.overviewModalFooter {
-  display: flex;
-  justify-content: center;
-  padding: 16px 20px;
-  border-top: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-/* =========================
-   Modal (native <dialog>)
-   ========================= */
-
+/* Global Modal Styles */
 .modal {
   width: min(560px, calc(100vw - 24px));
   border: 1px solid var(--border);
@@ -407,43 +146,30 @@ body {
   padding-top: 4px;
 }
 
-/* =========================
-   Buttons / inputs
-   ========================= */
+.playerRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
 
-.iconButton,
-.button,
+.playerLabel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rowButtons {
+  display: flex;
+  gap: 4px;
+}
+
 .smallButton {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   border-radius: 10px;
   cursor: pointer;
-}
-
-.iconButton {
-  padding: 6px 10px;
-}
-
-.button {
-  padding: 10px 12px;
-  font-size: 14px;
-}
-
-.button.primary {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.button.secondary {
-  background: transparent;
-}
-
-.button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.smallButton {
   padding: 8px 10px;
   font-size: 16px;
   line-height: 1;
@@ -459,44 +185,14 @@ select {
   font-size: 14px;
 }
 
-/* keyboard accessibility */
-.iconButton:focus-visible,
-.button:focus-visible,
-.smallButton:focus-visible,
-.zgCardCellSelectable:focus-visible,
 input:focus-visible,
 select:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.45);
   outline-offset: 2px;
 }
 
-/* =========================
-   Responsive tweaks
-   ========================= */
-
 @media (max-width: 720px) {
   .app {
     padding: 10px;
-  }
-
-  .zoomGrid {
-    grid-template-columns: 120px repeat(var(--mark-cols), 44px);
-  }
-
-  .overviewButton {
-    bottom: 16px;
-    right: 16px;
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-}
-
-@media (max-height: 700px) {
-  .zoomGrid {
-    max-height: calc(100vh - 160px);
-  }
-
-  .overviewContainer {
-    max-height: calc(95vh - 120px);
   }
 }

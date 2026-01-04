@@ -1,22 +1,21 @@
 // src/App.tsx
 
 import { useState } from "react";
-import { Header } from "./layout";
-import { Sheet } from "./ui";
-import "./index.css";
-
+import { Sheet } from "./ui/Sheet";
+import { ActionBar } from "./ui/ActionBar";
+import { SettingsModal } from "./ui/SettingsModal";
 import type { AppConfig } from "./domain/config";
 import { loadConfig } from "./infra/configStorage";
-
 import { loadGridPublic, saveGridPublic, clearGridPublic } from "./infra/gridPublicStorage";
-import { SettingsModal } from "./ui/SettingsModal";
 import type { GridPublicState } from "./infra";
+import "./index.css";
 
 export function App() {
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
   const [gridPublic, setGridPublic] = useState<GridPublicState>(() => loadGridPublic());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSession, setSettingsSession] = useState(0);
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const needsPublicLock = config.publicCount > 0;
 
@@ -26,7 +25,6 @@ export function App() {
   }
 
   function resetGrid() {
-    // Placeholder reset: currently only public selection/lock exists.
     clearGridPublic();
     setGridPublic({ locked: false, selected: [] });
   }
@@ -41,7 +39,6 @@ export function App() {
     if (isSelected) {
       selected.delete(cardId);
     } else {
-      // enforce maximum selection count
       if (selected.size >= config.publicCount) return;
       selected.add(cardId);
     }
@@ -64,22 +61,29 @@ export function App() {
     setGridPublic(persisted);
   }
 
+  function handleUndo() {
+    // Placeholder for undo functionality
+    console.log("Undo requested");
+  }
+
   return (
     <main className="app">
-      <Header
-        onOpenSettings={openSettings}
+      <Sheet
+        themeId={config.themeId}
+        publicCount={config.publicCount}
+        publicLocked={needsPublicLock ? gridPublic.locked : true}
+        publicSelected={needsPublicLock ? gridPublic.selected : []}
+        onTogglePublicCard={(id) => togglePublicCard(id)}
+        onLockPublic={lockPublic}
+        overviewOpen={overviewOpen}
+        onOverviewChange={setOverviewOpen}
       />
 
-      <section className="sheet" aria-label="Deduction sheet">
-        <Sheet
-          themeId={config.themeId}
-          publicCount={config.publicCount}
-          publicLocked={needsPublicLock ? gridPublic.locked : true}
-          publicSelected={needsPublicLock ? gridPublic.selected : []}
-          onTogglePublicCard={(id) => togglePublicCard(id)}
-          onLockPublic={lockPublic}
-        />
-      </section>
+      <ActionBar
+        onUndo={handleUndo}
+        onOverview={() => setOverviewOpen(true)}
+        onSettings={openSettings}
+      />
 
       <SettingsModal
         key={settingsSession}

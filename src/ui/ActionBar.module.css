@@ -1,0 +1,37 @@
+/* src/ui/ActionBar.module.css */
+
+.actionBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  z-index: 50;
+}
+
+.actionButton {
+  min-width: 80px;
+}
+
+.actionBar .actionButton:nth-child(2) {
+  flex-grow: 0;
+  font-size: 20px;
+  min-width: 60px;
+}
+
+@media (max-width: 720px) {
+  .actionBar {
+    padding: 12px 16px;
+  }
+
+  .actionButton {
+    min-width: 70px;
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+}
