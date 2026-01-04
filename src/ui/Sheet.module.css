@@ -177,20 +177,12 @@
   background: var(--panel);
   color: var(--text);
   padding: 0;
+  margin: 0;
   overflow: hidden;
 }
 
 .overviewModal::backdrop {
   background: rgba(0, 0, 0, 0.9);
-}
-
-.overviewHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
 }
 
 .overviewTitle {
@@ -201,15 +193,15 @@
 
 .overviewContainer {
   overflow: hidden;
-  height: calc(100vh - 120px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  height: calc(100vh - 64px);
+  position: relative;
+  background: var(--bg);
 }
 
 .overviewContent {
-  transform-origin: center center;
+  /* position: absolute;
+  top: 0;
+  left: 0; */
   transition: transform 0.2s ease-out;
   pointer-events: none;
 }
@@ -218,14 +210,27 @@
   overflow: visible;
   max-height: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+/* Remove sticky positioning in overview mode */
+.overviewGrid .headerCell,
+.overviewGrid .cardCell,
+.overviewGrid .cornerCell {
+  position: static;
+  z-index: auto;
 }
 
 .overviewFooter {
   display: flex;
   justify-content: center;
-  padding: 16px 20px;
+  padding: 10px;
   border-top: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.actionButton {
+  min-width: 80px;
 }
 
 @media (max-width: 720px) {

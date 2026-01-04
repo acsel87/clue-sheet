@@ -14,6 +14,12 @@
   z-index: 50;
 }
 
+/* If a button is the ONLY child (meaning Undo and Settings are null),
+   automatically add auto margins to center it. */
+.actionBar > :only-child {
+  margin-inline: auto;
+}
+
 .actionButton {
   min-width: 80px;
 }

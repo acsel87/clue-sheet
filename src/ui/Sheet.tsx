@@ -1,4 +1,4 @@
-// src/ui/Sheet.tsx - Advanced ResizeObserver Version
+// src/ui/Sheet.tsx
 
 import { useRef, useState, useEffect } from "react";
 import type { CardId, CategoryId, ThemeId } from "../domain/themes";
@@ -18,13 +18,18 @@ type Props = {
   onOverviewChange: (open: boolean) => void;
 };
 
+/**
+ * Custom hook for calculating optimal scale using ResizeObserver
+ */
 function useGridScale(
   gridRef: React.RefObject<HTMLDivElement | null>,
   overviewMode: boolean
 ) {
   const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    // Don't call setState when overviewMode becomes false
     if (!overviewMode) return;
 
     const el = gridRef.current;
@@ -41,15 +46,24 @@ function useGridScale(
       const viewportH = vv?.height ?? window.innerHeight;
       const viewportW = vv?.width ?? window.innerWidth;
 
-      // Reserve space for modal padding and header
-      const availableHeight = viewportH - 180;
-      const availableWidth = viewportW - 80;
+      // Reserve minimal space for modal header/footer (120px total)
+      const availableHeight = viewportH - 120;
+      const availableWidth = viewportW - 40;
 
       const scaleY = availableHeight / gridHeight;
       const scaleX = availableWidth / gridWidth;
 
-      const next = Math.min(1, scaleX, scaleY);
-      setScale((prev) => (Math.abs(prev - next) < 0.001 ? prev : next));
+      const optimalScale = Math.min(1, scaleX, scaleY);
+
+      // Calculate translation to center the scaled element
+      const scaledWidth = gridWidth * optimalScale;
+      const scaledHeight = gridHeight * optimalScale;
+
+      const translateX = Math.round((availableWidth - scaledWidth) / 2);
+      const translateY = Math.round((availableHeight - scaledHeight) / 2);
+
+      setScale(optimalScale);
+      setTranslate({ x: translateX, y: translateY });
     };
 
     calculateScale();
@@ -70,7 +84,13 @@ function useGridScale(
     };
   }, [overviewMode, gridRef]);
 
-  return overviewMode ? scale : 1;
+  // Derive values during render instead of setState in effect
+  // This follows React 19 best practices for "Don't Sync State, Derive It"
+  if (!overviewMode) {
+    return { scale: 1, translate: { x: 0, y: 0 } };
+  }
+
+  return { scale, translate };
 }
 
 export function Sheet(props: Props) {
@@ -79,7 +99,7 @@ export function Sheet(props: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  const scale = useGridScale(gridRef, overviewOpen);
+  const { scale, translate } = useGridScale(gridRef, overviewOpen);
 
   const cols = Array.from({ length: PLAYER_COL_COUNT }, (_, i) => i + 1);
   const selectedSet = new Set<number>(publicSelected);
@@ -168,29 +188,16 @@ export function Sheet(props: Props) {
         aria-label="Score sheet overview"
         onClose={handleDialogClose}
       >
-        <div className={styles.overviewHeader}>
-          <h3 className={styles.overviewTitle}>Grid Overview</h3>
-          <button
-            type="button"
-            className="iconButton"
-            onClick={() => onOverviewChange(false)}
-            aria-label="Close overview"
-          >
-            ✕
-          </button>
-        </div>
-
         <div className={styles.overviewContainer}>
           <div
             className={styles.overviewContent}
             style={{
-              transform: `scale(${scale})`,
-              transformOrigin: "top left",
+              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+              transformOrigin: "0 0",
             }}
           >
             <div
               className={`${styles.grid} ${styles.overviewGrid}`}
-              style={{ "--player-cols": PLAYER_COL_COUNT } as React.CSSProperties}
             >
               <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
               {cols.map((n) => (
@@ -211,12 +218,6 @@ export function Sheet(props: Props) {
               ))}
             </div>
           </div>
-        </div>
-
-        <div className={styles.overviewFooter}>
-          <button type="button" className="button secondary" onClick={() => onOverviewChange(false)}>
-            Close
-          </button>
         </div>
       </dialog>
     </>
@@ -299,7 +300,6 @@ function CategoryBlockReadOnly(props: {
               className={`${styles.cell} ${styles.cardCell} ${styles.readOnly} ${isSelected ? styles.selected : ""
                 }`}
             >
-              <span className={styles.cardId}>{card.id}</span>
               <span className={styles.cardName}>{card.name}</span>
             </div>
 

@@ -3,23 +3,25 @@
 import styles from "./ActionBar.module.css";
 
 type Props = {
-  onUndo: () => void;
+  onUndo?: () => void;
   onOverview: () => void;
-  onSettings: () => void;
+  onSettings?: () => void;
 };
 
 export function ActionBar({ onUndo, onOverview, onSettings }: Props) {
   return (
     <div className={styles.actionBar}>
-      <button
-        type="button"
-        className={`button secondary ${styles.actionButton}`}
-        onClick={onUndo}
-        aria-label="Undo last action"
-        title="Undo"
-      >
-        ↶ Undo
-      </button>
+      {onUndo &&
+        <button
+          type="button"
+          className={`button secondary ${styles.actionButton}`}
+          onClick={onUndo}
+          aria-label="Undo last action"
+          title="Undo"
+        >
+          ↶ Undo
+        </button>
+      }
 
       <button
         type="button"
@@ -31,15 +33,17 @@ export function ActionBar({ onUndo, onOverview, onSettings }: Props) {
         🗺️
       </button>
 
-      <button
-        type="button"
-        className={`button secondary ${styles.actionButton}`}
-        onClick={onSettings}
-        aria-label="Open settings"
-        title="Settings"
-      >
-        ⚙︎
-      </button>
+      {onSettings &&
+        <button
+          type="button"
+          className={`button secondary ${styles.actionButton}`}
+          onClick={onSettings}
+          aria-label="Open settings"
+          title="Settings"
+        >
+          ⚙︎
+        </button>
+      }
     </div>
   );
 }
