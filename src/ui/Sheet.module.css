@@ -3,20 +3,21 @@
 /* Main container - Flexbox layout with grid left, ActionBar right */
 .sheetContainer {
   overscroll-behavior: none;
-  overflow: hidden;
   display: flex;
-  height: 100vh;
-  padding: max(4px, env(safe-area-inset-top)) 2px 2px 2px;
+  height: 100%; /* Uses parent's height (body) */
+  /* Remove the padding-top with safe-area-inset - body handles it now */
+  padding: 0px;
   gap: 4px;
+  overflow: hidden;
 }
 
 /* Grid container - takes remaining space */
 .gridContainer {
   overscroll-behavior: none;
-  overflow: hidden;
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   border-radius: 2px;
 }
 
@@ -59,10 +60,14 @@
 /* Grid */
 .grid {
   display: grid;
-  grid-template-columns: 64px repeat(var(--player-cols), 42px);
-  gap: 2px; /* Spacing between cells for touch target separation */
-  overflow: auto;
+  grid-template-columns: 64px repeat(var(--player-cols), 44px);
+  gap: 2px;
+  overflow: hidden;
   flex: 1;
+  /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent bounce within grid */
+  overscroll-behavior: contain;
 }
 
 .cell {
@@ -84,7 +89,8 @@
   font-weight: 600;
   background: rgba(17, 24, 39, 0.95);
   backdrop-filter: blur(8px);
-  min-height: 16px;
+  min-height: 14px;
+  padding: 0px;
 }
 
 /* Card column */
