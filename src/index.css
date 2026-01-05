@@ -15,6 +15,7 @@
 html {
   /* Remove position: fixed - it causes iOS issues */
   height: 100%;
+  height: -webkit-fill-available; /* This is the key for iPhone SE */
   /* Disable bounce */
   overscroll-behavior: none;
   overflow: hidden;
@@ -22,13 +23,9 @@ html {
 
 body {
   margin: 0;
-  /* Use modern viewport units with fallback */
-  /* height: 100vh; Fallback for old browsers */
-  /* height: 100svh; Small viewport - accounts for iOS UI */
-  /* height: -webkit-fill-available; WebKit fallback */
-
-  /* Use JavaScript-calculated height instead of 100svh */
-  height: var(--app-height, 100vh);
+  height: 100%;
+  min-height: 100vh;
+  min-height: -webkit-fill-available; /* Accounts for Safari toolbar */
 
   /* Disable bounce */
   overscroll-behavior: none;
@@ -39,7 +36,7 @@ body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 
   /* Safe area insets for PWA/notch */
-  padding: env(safe-area-inset-top) 2px env(safe-area-inset-bottom) 2px;
+  padding: env(safe-area-inset-top) 2px 0px 2px;
 }
 
 .app {

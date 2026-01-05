@@ -16,15 +16,6 @@ async function registerServiceWorker() {
   })
 }
 
-function setAppHeight() {
-  const doc = document.documentElement;
-  doc.style.setProperty('--app-height', `${window.innerHeight}px`);
-}
-
-window.addEventListener('resize', setAppHeight);
-window.addEventListener('orientationchange', setAppHeight);
-setAppHeight();
-
 registerServiceWorker()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
