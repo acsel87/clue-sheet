@@ -4,4 +4,4 @@ export { Sheet } from "./Sheet";
 
 export { SettingsModal } from "./SettingsModal";
 
-export { ActionBar, type ActionBarProps } from "./ActionBar";
+export { ActionBar } from "./ActionBar";

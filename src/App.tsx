@@ -1,7 +1,8 @@
 // src/App.tsx
 
 import { useState } from "react";
-import { Sheet, SettingsModal } from "./ui";
+import { Sheet } from "./ui/Sheet";
+import { SettingsModal } from "./ui/SettingsModal";
 import type { AppConfig } from "./domain/config";
 import { loadConfig } from "./infra/configStorage";
 import { loadGridPublic, saveGridPublic, clearGridPublic } from "./infra/gridPublicStorage";
@@ -13,7 +14,6 @@ export function App() {
   const [gridPublic, setGridPublic] = useState<GridPublicState>(() => loadGridPublic());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSession, setSettingsSession] = useState(0);
-  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const needsPublicLock = config.publicCount > 0;
 
@@ -60,7 +60,6 @@ export function App() {
   }
 
   function handleUndo() {
-    // Placeholder for undo functionality
     console.log("Undo requested");
   }
 
@@ -73,8 +72,6 @@ export function App() {
         publicSelected={needsPublicLock ? gridPublic.selected : []}
         onTogglePublicCard={(id) => togglePublicCard(id)}
         onLockPublic={lockPublic}
-        overviewOpen={overviewOpen}
-        onOverviewChange={setOverviewOpen}
         onUndo={handleUndo}
         onSettings={openSettings}
       />

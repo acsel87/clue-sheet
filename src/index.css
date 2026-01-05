@@ -22,20 +22,19 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  /* PWA safe area support */
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .app {
-  padding: 12px;
-  max-width: 980px;
-  margin: 0 auto;
-  min-height: 100vh;
+  padding: 0;
+  max-width: 100vw;
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Global Button Styles */
-.iconButton,
 .button {
   border: 1px solid var(--border);
   background: transparent;
@@ -43,12 +42,8 @@ body {
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  padding: 4px 6px;
+  padding: 8px 12px;
   transition: all 0.15s ease;
-}
-
-.iconButton {
-  padding: 6px 10px;
 }
 
 .button.primary {
@@ -72,8 +67,7 @@ body {
   cursor: not-allowed;
 }
 
-.button:focus-visible,
-.iconButton:focus-visible {
+.button:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.45);
   outline-offset: 2px;
 }
@@ -175,6 +169,22 @@ body {
   line-height: 1;
 }
 
+.iconButton {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 6px 10px;
+  transition: all 0.15s ease;
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+}
+
 input,
 select {
   background: rgba(255, 255, 255, 0.06);
@@ -189,10 +199,4 @@ input:focus-visible,
 select:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.45);
   outline-offset: 2px;
-}
-
-@media (max-width: 720px) {
-  .app {
-    padding: 10px;
-  }
 }
