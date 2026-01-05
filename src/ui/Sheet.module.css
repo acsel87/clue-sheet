@@ -82,8 +82,7 @@
   font-weight: 600;
   background: rgba(17, 24, 39, 0.95);
   backdrop-filter: blur(8px);
-  padding: 2px 4px;
-  min-height: 20px;
+  min-height: 16px;
 }
 
 /* Card column */
