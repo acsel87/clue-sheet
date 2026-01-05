@@ -60,7 +60,7 @@
 /* Grid */
 .grid {
   display: grid;
-  grid-template-columns: 62px repeat(var(--player-cols), 40px);
+  grid-template-columns: 62px repeat(var(--player-cols), 42px);
   gap: 2px;
   overflow: hidden;
   flex: 1;
@@ -71,7 +71,7 @@
 }
 
 .cell {
-  min-height: 26px; /* WCAG 2.5.8 Level AA compliant (>24px) */
+  min-height: 28px; /* WCAG 2.5.8 Level AA compliant (>24px) */
   padding: 2px;
   display: flex;
   align-items: center;
