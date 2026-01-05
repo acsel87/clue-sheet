@@ -6,7 +6,7 @@
   display: flex;
   height: 100%; /* Uses parent's height (body) */
   /* Remove the padding-top with safe-area-inset - body handles it now */
-  padding: 0px;
+  padding: 2px;
   gap: 4px;
   overflow: hidden;
 }
@@ -60,7 +60,7 @@
 /* Grid */
 .grid {
   display: grid;
-  grid-template-columns: 64px repeat(var(--player-cols), 44px);
+  grid-template-columns: 64px repeat(var(--player-cols), 42px);
   gap: 2px;
   overflow: hidden;
   flex: 1;
