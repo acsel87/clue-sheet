@@ -23,9 +23,12 @@ html {
 body {
   margin: 0;
   /* Use modern viewport units with fallback */
-  height: 100vh; /* Fallback for old browsers */
-  height: 100svh; /* Small viewport - accounts for iOS UI */
-  height: -webkit-fill-available; /* WebKit fallback */
+  /* height: 100vh; Fallback for old browsers */
+  /* height: 100svh; Small viewport - accounts for iOS UI */
+  /* height: -webkit-fill-available; WebKit fallback */
+
+  /* Use JavaScript-calculated height instead of 100svh */
+  height: var(--app-height, 100vh);
 
   /* Disable bounce */
   overscroll-behavior: none;
