@@ -2,19 +2,21 @@
 
 /* Main container - Flexbox layout with grid left, ActionBar right */
 .sheetContainer {
+  overscroll-behavior: none;
+  overflow: hidden;
   display: flex;
   height: 100vh;
   padding: max(12px, env(safe-area-inset-top)) 2px 2px 2px;
   gap: 4px;
-  overflow: hidden;
 }
 
 /* Grid container - takes remaining space */
 .gridContainer {
+  overscroll-behavior: none;
+  overflow: hidden;
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   border-radius: 8px;
 }
 
