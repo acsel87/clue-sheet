@@ -1,12 +1,16 @@
 // src/ui/Sheet.tsx
 
-import { PLAYER_COLORS } from "../domain";
-import type { CardId, CategoryId, ThemeId } from "../domain/themes";
-import { CATEGORIES, cardsByCategory } from "../domain/themes";
+import { useState, useCallback } from "react";
+import type { CardId, ThemeId, MaybeColorKey } from "../domain";
 import { ActionBar } from "./ActionBar";
+import { MarkerBar, type ValidationFns } from "./MarkerBar";
+import { SheetGrid } from "./SheetGrid";
+import { useCellMarks } from "./hooks";
 import styles from "./Sheet.module.css";
 
 const PLAYER_COL_COUNT = 6;
+
+type SelectedCell = { cardId: CardId; playerId: number } | null;
 
 type Props = {
   themeId: ThemeId;
@@ -31,21 +35,64 @@ export function Sheet(props: Props) {
     onSettings,
   } = props;
 
-  const cols = Array.from({ length: PLAYER_COL_COUNT }, (_, i) => i + 1);
-  const selectedSet = new Set<number>(publicSelected);
+  const { getCellMark, setCellMark, toggleMaybePreset, clearMark } = useCellMarks();
+  const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
 
   const needsPublicLock = publicCount > 0;
   const isSelectionComplete = publicSelected.length === publicCount;
 
+  // Placeholder validation - replace with real logic later
+  const createValidation = useCallback(
+    (_cardId: CardId, _playerId: number): ValidationFns => ({
+      canMarkHas: () => ({ allowed: true }),
+      canMarkNot: () => ({ allowed: true }),
+      canToggleMaybe: (_preset: MaybeColorKey) => ({ allowed: true }),
+    }),
+    []
+  );
+
+  // Handlers
+  function handleCellClick(cardId: CardId, playerId: number) {
+    setSelectedCell({ cardId, playerId });
+  }
+
+  function handleCloseMarkerBar() {
+    setSelectedCell(null);
+  }
+
+  function handleMarkHas() {
+    if (!selectedCell) return;
+    setCellMark(selectedCell.cardId, selectedCell.playerId, { type: "has" });
+    handleCloseMarkerBar();
+  }
+
+  function handleMarkNot() {
+    if (!selectedCell) return;
+    setCellMark(selectedCell.cardId, selectedCell.playerId, { type: "not" });
+    handleCloseMarkerBar();
+  }
+
+  function handleToggleMaybe(preset: MaybeColorKey) {
+    if (!selectedCell) return;
+    toggleMaybePreset(selectedCell.cardId, selectedCell.playerId, preset);
+  }
+
+  function handleClearMark() {
+    if (!selectedCell) return;
+    clearMark(selectedCell.cardId, selectedCell.playerId);
+  }
+
   return (
     <div className={styles.sheetContainer}>
       <div className={styles.gridContainer}>
+        {/* Public cards bar */}
         {needsPublicLock && (
           <div className={styles.publicBar}>
             <div className={styles.publicBarContent}>
               <span className={styles.publicBarTitle}>Public cards</span>
               <span className={styles.publicBarMeta}>
-                {publicLocked ? "Locked" : "Unlocked"} • {publicSelected.length}/{publicCount} selected
+                {publicLocked ? "Locked" : "Unlocked"} • {publicSelected.length}/
+                {publicCount} selected
               </span>
             </div>
 
@@ -55,8 +102,11 @@ export function Sheet(props: Props) {
                 className="button primary"
                 disabled={!isSelectionComplete}
                 onClick={onLockPublic}
-                aria-disabled={!isSelectionComplete}
-                title={isSelectionComplete ? "Lock public cards" : "Select all public cards first"}
+                title={
+                  isSelectionComplete
+                    ? "Lock public cards"
+                    : "Select all public cards first"
+                }
               >
                 Lock
               </button>
@@ -66,97 +116,36 @@ export function Sheet(props: Props) {
           </div>
         )}
 
-        <div
-          className={styles.grid}
-          style={{ "--player-cols": PLAYER_COL_COUNT } as React.CSSProperties}
-          aria-label="Interactive score sheet grid"
-        >
-          {/* Header row */}
-          <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
-          {cols.map((n) => (
-            <div key={n} className={`${styles.cell} ${styles.headerCell}`} style={{ backgroundColor: PLAYER_COLORS[n - 1] }}>
-              P{n}
-            </div>
-          ))}
-
-          {/* Category rows */}
-          {CATEGORIES.map((cat) => (
-            <CategoryBlock
-              key={cat.id}
-              themeId={themeId}
-              category={cat.id}
-              label={cat.label}
-              color={cat.color}
-              cols={cols}
-              publicCount={publicCount}
-              publicLocked={publicLocked}
-              selectedSet={selectedSet}
-              onTogglePublicCard={onTogglePublicCard}
-            />
-          ))}
-        </div>
+        {/* Grid */}
+        <SheetGrid
+          themeId={themeId}
+          playerCount={PLAYER_COL_COUNT}
+          publicCount={publicCount}
+          publicLocked={publicLocked}
+          publicSelected={publicSelected}
+          selectedCell={selectedCell}
+          getCellMark={getCellMark}
+          onTogglePublicCard={onTogglePublicCard}
+          onCellClick={handleCellClick}
+        />
       </div>
 
-      <ActionBar onUndo={onUndo} onSettings={onSettings} />
+      {/* Sidebar */}
+      <div className={styles.sidebar}>
+        <ActionBar onUndo={onUndo} onSettings={onSettings} />
+
+        {selectedCell && (
+          <MarkerBar
+            currentMark={getCellMark(selectedCell.cardId, selectedCell.playerId)}
+            validation={createValidation(selectedCell.cardId, selectedCell.playerId)}
+            onMarkHas={handleMarkHas}
+            onMarkNot={handleMarkNot}
+            onToggleMaybe={handleToggleMaybe}
+            onClear={handleClearMark}
+            onClose={handleCloseMarkerBar}
+          />
+        )}
+      </div>
     </div>
-  );
-}
-
-function CategoryBlock(props: {
-  themeId: ThemeId;
-  category: CategoryId;
-  label: string;
-  color: string;
-  cols: number[];
-  publicCount: number;
-  publicLocked: boolean;
-  selectedSet: ReadonlySet<number>;
-  onTogglePublicCard: (cardId: CardId) => void;
-}) {
-  const { themeId, category, color, cols, publicCount, publicLocked, selectedSet, onTogglePublicCard } = props;
-
-  return (
-    <>
-      {/* Category divider with subtle background */}
-      {/* <div className={styles.categoryDivider} style={{ gridColumn: `1 / span ${cols.length + 1}` }} /> */}
-
-      {cardsByCategory(themeId, category).map((card) => {
-        const isSelected = selectedSet.has(card.id);
-        const needsPublicLock = publicCount > 0;
-        const canSelect = needsPublicLock && !publicLocked;
-
-        return (
-          <div key={card.id} className={styles.row} style={{ gridColumn: `1 / span ${cols.length + 1}` }}>
-            <button
-              type="button"
-              className={`${styles.cell} ${styles.cardCell} ${canSelect ? styles.selectable : ""} ${isSelected ? styles.selected : ""
-                } ${needsPublicLock && !publicLocked ? styles.attention : ""}`} style={{ backgroundColor: color }}
-              onClick={() => {
-                if (!canSelect) return;
-                onTogglePublicCard(card.id);
-              }}
-              disabled={!canSelect}
-              aria-disabled={!canSelect}
-              title={canSelect ? "Select/deselect as public" : undefined}
-            >
-              <span className={styles.cardName}>{card.name}</span>
-            </button>
-
-            {cols.map((n) => (
-              <button
-                key={n}
-                type="button"
-                className={`${styles.cell} ${styles.markCell}`}
-                style={{ backgroundColor: color, borderColor: PLAYER_COLORS[n - 1] }}
-                onClick={() => console.log(`Marked card ${card.id}, player ${n}`)}
-                aria-label={`Mark ${card.name} for player ${n}`}
-              >
-                <span className={styles.markIcon}>➕</span>
-              </button>
-            ))}
-          </div>
-        );
-      })}
-    </>
   );
 }

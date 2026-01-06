@@ -1,24 +1,21 @@
 // src/ui/icons/Has.tsx
 
-import React from 'react';
+import type React from "react";
 
-export const HasIcon = (props: React.SVGProps<SVGSVGElement>) => {
-  return (
-    <div style={{ color: 'green' }}>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
-      >
-        <path d="M20 6 9 17l-5-5" />
-      </svg>
-    </div>
-  );
-};
+export const HasIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ color: "green" }}
+    {...props}
+  >
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);

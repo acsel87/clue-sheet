@@ -1,0 +1,56 @@
+/* src/ui/MarkerBar.module.css */
+
+.markerBar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.markerButton {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.markerButton:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.markerButton:active:not(.disabled) {
+  transform: scale(0.95);
+}
+
+.markerButton.selected {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.markerButton.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.markerButton:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+}
+
+.divider {
+  width: 20px;
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}

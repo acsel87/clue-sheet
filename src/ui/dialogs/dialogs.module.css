@@ -1,0 +1,55 @@
+/* src/ui/dialogs/dialogs.module.css */
+
+.dialog {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0;
+  max-width: min(320px, calc(100vw - 32px));
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dialogMessage {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.dialogFooter {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.dialogButton {
+  min-width: 70px;
+}
+
+/* Info dialog specific */
+.infoDialog .dialogFooter {
+  justify-content: center;
+}
+
+/* Confirm dialog specific */
+.confirmDialog .dialogFooter {
+  justify-content: flex-end;
+}

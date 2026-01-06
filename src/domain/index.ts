@@ -6,7 +6,6 @@ export { CATEGORIES, THEMES, getCards, cardsByCategory } from "./themes";
 export {
   MAYBE_COLOR_KEYS,
   MAYBE_COLOR_HEX,
-  MaybeColorKeySchema,
   type MaybeColorKey,
 } from "./maybe-colors";
 
@@ -19,3 +18,5 @@ export {
 } from "./config";
 
 export { AppConfigSchema } from "./configSchema";
+
+export { type CellMark, EMPTY_MARK } from "./cell-marks";
