@@ -7,9 +7,19 @@ export const MAX_PLAYERS = 6 as const;
 
 export type PlayerId = 1 | 2 | 3 | 4 | 5 | 6;
 
+export const PLAYER_COLORS: ReadonlyArray<string> = [
+  "#e6194b", // red
+  "#ffffffff", // white
+  "#0082c8", // blue
+  "#f58231", // orange
+  "#911eb4", // purple
+  "#46f0f0", // cyan
+] as const;
+
 export type PlayerConfig = Readonly<{
   id: PlayerId;
   name: string;
+  color: string;
 }>;
 
 export type AppConfig = Readonly<{
@@ -24,7 +34,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   handSize: 0,
   publicCount: 0,
   players: [
-    { id: 1, name: "You" },
-    { id: 2, name: "P2" },
+    { id: 1, name: "You", color: PLAYER_COLORS[0]! },
+    { id: 2, name: "P2", color: PLAYER_COLORS[1]! },
   ],
 } as const;

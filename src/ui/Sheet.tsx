@@ -1,5 +1,6 @@
 // src/ui/Sheet.tsx
 
+import { PLAYER_COLORS } from "../domain";
 import type { CardId, CategoryId, ThemeId } from "../domain/themes";
 import { CATEGORIES, cardsByCategory } from "../domain/themes";
 import { ActionBar } from "./ActionBar";
@@ -73,8 +74,8 @@ export function Sheet(props: Props) {
           {/* Header row */}
           <div className={`${styles.cell} ${styles.headerCell} ${styles.cornerCell}`}>Card</div>
           {cols.map((n) => (
-            <div key={n} className={`${styles.cell} ${styles.headerCell}`}>
-              C{n}
+            <div key={n} className={`${styles.cell} ${styles.headerCell}`} style={{ backgroundColor: PLAYER_COLORS[n - 1] }}>
+              P{n}
             </div>
           ))}
 
@@ -85,6 +86,7 @@ export function Sheet(props: Props) {
               themeId={themeId}
               category={cat.id}
               label={cat.label}
+              color={cat.color}
               cols={cols}
               publicCount={publicCount}
               publicLocked={publicLocked}
@@ -104,13 +106,14 @@ function CategoryBlock(props: {
   themeId: ThemeId;
   category: CategoryId;
   label: string;
+  color: string;
   cols: number[];
   publicCount: number;
   publicLocked: boolean;
   selectedSet: ReadonlySet<number>;
   onTogglePublicCard: (cardId: CardId) => void;
 }) {
-  const { themeId, category, cols, publicCount, publicLocked, selectedSet, onTogglePublicCard } = props;
+  const { themeId, category, color, cols, publicCount, publicLocked, selectedSet, onTogglePublicCard } = props;
 
   return (
     <>
@@ -127,7 +130,7 @@ function CategoryBlock(props: {
             <button
               type="button"
               className={`${styles.cell} ${styles.cardCell} ${canSelect ? styles.selectable : ""} ${isSelected ? styles.selected : ""
-                } ${needsPublicLock && !publicLocked ? styles.attention : ""}`}
+                } ${needsPublicLock && !publicLocked ? styles.attention : ""}`} style={{ backgroundColor: color }}
               onClick={() => {
                 if (!canSelect) return;
                 onTogglePublicCard(card.id);
@@ -144,6 +147,7 @@ function CategoryBlock(props: {
                 key={n}
                 type="button"
                 className={`${styles.cell} ${styles.markCell}`}
+                style={{ backgroundColor: color, borderColor: PLAYER_COLORS[n - 1] }}
                 onClick={() => console.log(`Marked card ${card.id}, player ${n}`)}
                 aria-label={`Mark ${card.name} for player ${n}`}
               >

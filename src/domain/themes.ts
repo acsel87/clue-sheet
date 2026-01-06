@@ -32,11 +32,11 @@ export type Card = Readonly<{
 }>;
 
 export const CATEGORIES: ReadonlyArray<
-  Readonly<{ id: CategoryId; label: string }>
+  Readonly<{ id: CategoryId; label: string; color: string }>
 > = [
-  { id: "suspects", label: "Suspects" },
-  { id: "weapons", label: "Weapons" },
-  { id: "rooms", label: "Rooms" },
+  { id: "suspects", label: "Suspects", color: "orange" },
+  { id: "weapons", label: "Weapons", color: "green" },
+  { id: "rooms", label: "Rooms", color: "blue" },
 ] as const;
 
 export const THEMES = [

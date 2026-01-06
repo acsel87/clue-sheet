@@ -1,7 +1,7 @@
 // src/ui/SettingsModal.tsx
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { MAX_PLAYERS, MIN_PLAYERS, type AppConfig, type PlayerId } from "../domain/config";
+import { MAX_PLAYERS, MIN_PLAYERS, PLAYER_COLORS, type AppConfig, type PlayerId } from "../domain/config";
 import { THEMES } from "../domain/themes";
 import { saveConfig } from "../infra/configStorage";
 
@@ -95,7 +95,7 @@ export function SettingsModal(props: Props) {
 
     setDraft((prev) => ({
       ...prev,
-      players: [...prev.players, { id: nextId, name: defaultPlayerName(nextId) }],
+      players: [...prev.players, { id: nextId, name: defaultPlayerName(nextId), color: PLAYER_COLORS[nextId - 1]! }],
     }));
   }
 

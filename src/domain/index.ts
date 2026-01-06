@@ -11,6 +11,11 @@ export {
 } from "./maybe-colors";
 
 export type { PlayerId, PlayerConfig, AppConfig } from "./config";
-export { MIN_PLAYERS, MAX_PLAYERS, DEFAULT_CONFIG } from "./config";
+export {
+  MIN_PLAYERS,
+  MAX_PLAYERS,
+  DEFAULT_CONFIG,
+  PLAYER_COLORS,
+} from "./config";
 
 export { AppConfigSchema } from "./configSchema";
