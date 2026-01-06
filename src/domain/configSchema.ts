@@ -24,6 +24,7 @@ const PlayerIdSchema: z.ZodType<PlayerId> = z
 const PlayerConfigSchema: z.ZodType<AppConfig["players"][number]> = z.object({
   id: PlayerIdSchema,
   name: z.string().trim().min(1).max(30),
+  color: z.string().trim().min(1).max(20),
 });
 
 export const AppConfigSchema: z.ZodType<AppConfig> = z
