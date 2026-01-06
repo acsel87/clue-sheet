@@ -9,7 +9,6 @@
   padding: 2px;
   gap: 4px;
   overflow: hidden;
-  background: blue;
 }
 
 /* Grid container - takes remaining space */
@@ -20,7 +19,6 @@
   flex-direction: column;
   overflow: hidden;
   border-radius: 2px;
-  background: purple;
 }
 
 /* Public Bar */
@@ -118,6 +116,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+  background-color: var(--category-bg);
 }
 
 .markCell {

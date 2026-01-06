@@ -19,7 +19,6 @@ html {
   /* Disable bounce */
   overscroll-behavior: none;
   overflow: hidden;
-  background: red;
 }
 
 body {
@@ -38,7 +37,6 @@ body {
 
   /* Safe area insets for PWA/notch */
   padding: env(safe-area-inset-top) 2px 0px 2px;
-  background: green;
 }
 
 .app {
@@ -48,7 +46,6 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: yellow;
 }
 
 /* Global Button Styles */
