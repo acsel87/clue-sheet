@@ -1,7 +1,7 @@
 // src/ui/SheetGrid.tsx
 
 import { PLAYER_COLORS, MAYBE_COLOR_HEX } from "../domain";
-import type { CardId, CategoryId, ThemeId, CellMark } from "../domain";
+import type { CardId, CategoryId, ThemeId, CellMark, NumberMarkerKey } from "../domain";
 import { CATEGORIES, cardsByCategory } from "../domain/themes";
 import { HasIcon, NotIcon } from "./icons";
 import styles from "./Sheet.module.css";
@@ -204,18 +204,20 @@ function MarkCell(props: {
     onClick,
   } = props;
 
-  const maybeStyle = getMaybeQuadrantStyle(mark);
+  // Get maybe stripes style (vertical colored bars)
+  const maybeStripeStyle = getMaybeStripeStyle(mark);
+  const hasMaybeStripes = mark.type === "maybe" && mark.presets.size > 0;
 
   return (
     <button
       type="button"
-      className={`${styles.cell} ${styles.markCell} ${mark.type === "maybe" ? styles.maybeCell : ""
+      className={`${styles.cell} ${styles.markCell} ${hasMaybeStripes ? styles.maybeCell : ""
         } ${isSelected ? styles.cellSelected : ""} ${isDisabled ? styles.cellDisabled : ""
         } ${isLocked ? styles.cellLocked : ""}`}
       style={{
-        backgroundColor: mark.type === "maybe" ? undefined : categoryColor,
+        backgroundColor: hasMaybeStripes ? undefined : categoryColor,
         borderColor: PLAYER_COLORS[playerId - 1],
-        ...maybeStyle,
+        ...maybeStripeStyle,
       }}
       onClick={onClick}
       disabled={isDisabled}
@@ -234,20 +236,36 @@ function CellContent({ mark }: { mark: CellMark }) {
     case "not":
       return <NotIcon width={16} height={16} />;
     case "maybe":
+      // Render white numbers if any are selected
+      return <NumbersOverlay numbers={mark.numbers} />;
     case "empty":
     default:
       return null;
   }
 }
 
-function getMaybeQuadrantStyle(mark: CellMark): React.CSSProperties | undefined {
-  if (mark.type !== "maybe") return undefined;
+// Renders white number markers as text overlay
+function NumbersOverlay({ numbers }: { numbers: ReadonlySet<NumberMarkerKey> }) {
+  if (numbers.size === 0) return null;
+
+  const sortedNumbers = Array.from(numbers).sort((a, b) => a - b);
+
+  return (
+    <span className={styles.numbersOverlay}>
+      {sortedNumbers.join("")}
+    </span>
+  );
+}
+
+// Generate CSS for vertical colored stripes
+function getMaybeStripeStyle(mark: CellMark): React.CSSProperties | undefined {
+  if (mark.type !== "maybe" || mark.presets.size === 0) return undefined;
 
   const presets = mark.presets;
   return {
-    "--maybe-tl": presets.has(1) ? MAYBE_COLOR_HEX[1] : "transparent",
-    "--maybe-tr": presets.has(2) ? MAYBE_COLOR_HEX[2] : "transparent",
-    "--maybe-bl": presets.has(3) ? MAYBE_COLOR_HEX[3] : "transparent",
-    "--maybe-br": presets.has(4) ? MAYBE_COLOR_HEX[4] : "transparent",
+    "--maybe-1": presets.has(1) ? MAYBE_COLOR_HEX[1] : "transparent",
+    "--maybe-2": presets.has(2) ? MAYBE_COLOR_HEX[2] : "transparent",
+    "--maybe-3": presets.has(3) ? MAYBE_COLOR_HEX[3] : "transparent",
+    "--maybe-4": presets.has(4) ? MAYBE_COLOR_HEX[4] : "transparent",
   } as React.CSSProperties;
 }

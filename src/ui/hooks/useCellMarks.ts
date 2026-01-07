@@ -2,7 +2,11 @@
 
 import { useState, useCallback } from "react";
 import type { CardId, CellMark, MaybeColorKey } from "../../domain";
-import { EMPTY_MARK } from "../../domain";
+import {
+  EMPTY_MARK,
+  createMaybeMark,
+  type NumberMarkerKey,
+} from "../../domain/cell-marks";
 
 type CellKey = `${CardId}-${number}`;
 
@@ -33,31 +37,60 @@ export function useCellMarks() {
     []
   );
 
+  // Toggle a maybe color preset (vertical stripes - automation-aware)
   const toggleMaybePreset = useCallback(
     (cardId: CardId, playerId: number, preset: MaybeColorKey) => {
       const currentMark = getCellMark(cardId, playerId);
 
-      let newPresets: Set<MaybeColorKey>;
+      let currentPresets: Set<MaybeColorKey>;
+      let currentNumbers: Set<NumberMarkerKey>;
 
       if (currentMark.type === "maybe") {
-        newPresets = new Set(currentMark.presets);
-        if (newPresets.has(preset)) {
-          newPresets.delete(preset);
-        } else {
-          newPresets.add(preset);
-        }
+        currentPresets = new Set(currentMark.presets);
+        currentNumbers = new Set(currentMark.numbers);
       } else {
-        newPresets = new Set([preset]);
+        currentPresets = new Set();
+        currentNumbers = new Set();
       }
 
-      if (newPresets.size === 0) {
-        setCellMark(cardId, playerId, EMPTY_MARK);
+      // Toggle the preset
+      if (currentPresets.has(preset)) {
+        currentPresets.delete(preset);
       } else {
-        setCellMark(cardId, playerId, {
-          type: "maybe",
-          presets: newPresets,
-        });
+        currentPresets.add(preset);
       }
+
+      const newMark = createMaybeMark(currentPresets, currentNumbers);
+      setCellMark(cardId, playerId, newMark);
+    },
+    [getCellMark, setCellMark]
+  );
+
+  // Toggle a number marker (white text - manual-only)
+  const toggleNumberMarker = useCallback(
+    (cardId: CardId, playerId: number, num: NumberMarkerKey) => {
+      const currentMark = getCellMark(cardId, playerId);
+
+      let currentPresets: Set<MaybeColorKey>;
+      let currentNumbers: Set<NumberMarkerKey>;
+
+      if (currentMark.type === "maybe") {
+        currentPresets = new Set(currentMark.presets);
+        currentNumbers = new Set(currentMark.numbers);
+      } else {
+        currentPresets = new Set();
+        currentNumbers = new Set();
+      }
+
+      // Toggle the number
+      if (currentNumbers.has(num)) {
+        currentNumbers.delete(num);
+      } else {
+        currentNumbers.add(num);
+      }
+
+      const newMark = createMaybeMark(currentPresets, currentNumbers);
+      setCellMark(cardId, playerId, newMark);
     },
     [getCellMark, setCellMark]
   );
@@ -73,6 +106,7 @@ export function useCellMarks() {
     getCellMark,
     setCellMark,
     toggleMaybePreset,
+    toggleNumberMarker,
     clearMark,
   };
 }

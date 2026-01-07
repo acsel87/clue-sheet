@@ -48,6 +48,18 @@
   outline-offset: 2px;
 }
 
+/* Number marker buttons */
+.numberButton {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.numberButton.selected {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .divider {
   width: 20px;
   height: 1px;

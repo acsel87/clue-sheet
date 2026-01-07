@@ -36,5 +36,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   players: [
     { id: 1, name: "You", color: PLAYER_COLORS[0]! },
     { id: 2, name: "P2", color: PLAYER_COLORS[1]! },
+    { id: 3, name: "P3", color: PLAYER_COLORS[2]! },
+    { id: 4, name: "P4", color: PLAYER_COLORS[3]! },
   ],
 } as const;

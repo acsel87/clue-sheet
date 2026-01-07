@@ -1,13 +1,12 @@
 // src/ui/MarkerBar.tsx
 
 import { useState } from "react";
-import type { CellMark, MaybeColorKey } from "../domain";
-import { MAYBE_COLOR_KEYS, MAYBE_COLOR_HEX } from "../domain";
+import type { CellMark, MaybeColorKey, NumberMarkerKey } from "../domain";
+import { MAYBE_COLOR_KEYS, MAYBE_COLOR_HEX, NUMBER_MARKER_KEYS } from "../domain";
 import { HasIcon, NotIcon, MaybeIcon } from "./icons";
 import { InfoDialog } from "./dialogs";
 import styles from "./MarkerBar.module.css";
 
-// Validation result type - structure for future real validations
 export type ValidationResult = {
   allowed: boolean;
   reason?: string;
@@ -17,6 +16,7 @@ export type ValidationFns = {
   canMarkHas: () => ValidationResult;
   canMarkNot: () => ValidationResult;
   canToggleMaybe: (preset: MaybeColorKey) => ValidationResult;
+  // Numbers have no validation - always allowed (manual-only)
 };
 
 type Props = {
@@ -25,6 +25,7 @@ type Props = {
   onMarkHas: () => void;
   onMarkNot: () => void;
   onToggleMaybe: (preset: MaybeColorKey) => void;
+  onToggleNumber: (num: NumberMarkerKey) => void;
   onClear: () => void;
   onClose: () => void;
 };
@@ -36,11 +37,11 @@ export function MarkerBar(props: Props) {
     onMarkHas,
     onMarkNot,
     onToggleMaybe,
+    onToggleNumber,
     onClear,
     onClose,
   } = props;
 
-  // Info dialog state for validation messages
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const hasValidation = validation.canMarkHas();
@@ -48,8 +49,12 @@ export function MarkerBar(props: Props) {
 
   const isHasSelected = currentMark.type === "has";
   const isNotSelected = currentMark.type === "not";
+
+  // Get active maybe presets and numbers
   const activeMaybes =
     currentMark.type === "maybe" ? currentMark.presets : new Set<MaybeColorKey>();
+  const activeNumbers =
+    currentMark.type === "maybe" ? currentMark.numbers : new Set<NumberMarkerKey>();
 
   function handleHasClick() {
     if (!hasValidation.allowed) {
@@ -78,10 +83,15 @@ export function MarkerBar(props: Props) {
   function handleMaybeClick(preset: MaybeColorKey) {
     const maybeValidation = validation.canToggleMaybe(preset);
     if (!maybeValidation.allowed) {
-      setInfoMessage(maybeValidation.reason ?? "Cannot toggle MAYBE");
+      setInfoMessage(maybeValidation.reason ?? "Cannot toggle color marker");
       return;
     }
     onToggleMaybe(preset);
+  }
+
+  // Numbers have no validation - always allowed
+  function handleNumberClick(num: NumberMarkerKey) {
+    onToggleNumber(num);
   }
 
   return (
@@ -115,27 +125,49 @@ export function MarkerBar(props: Props) {
 
         <div className={styles.divider} />
 
-        {/* MAYBE buttons */}
+        {/* Maybe color buttons (colored stripes - automation-aware) */}
         {MAYBE_COLOR_KEYS.map((preset) => {
           const isActive = activeMaybes.has(preset);
           const maybeValidation = validation.canToggleMaybe(preset);
 
           return (
             <button
-              key={preset}
+              key={`maybe-${preset}`}
               type="button"
               className={`${styles.markerButton} ${isActive ? styles.selected : ""} ${!maybeValidation.allowed ? styles.disabled : ""
                 }`}
               onClick={() => handleMaybeClick(preset)}
-              aria-label={`Toggle MAYBE preset ${preset}`}
+              aria-label={`Toggle color marker ${preset}`}
               aria-pressed={isActive}
-              title={`MAYBE ${preset}`}
+              title={`Color ${preset}`}
             >
               <MaybeIcon
                 width={16}
                 height={16}
                 style={{ color: MAYBE_COLOR_HEX[preset] }}
               />
+            </button>
+          );
+        })}
+
+        <div className={styles.divider} />
+
+        {/* Number marker buttons (white text - manual-only) */}
+        {NUMBER_MARKER_KEYS.map((num) => {
+          const isActive = activeNumbers.has(num);
+
+          return (
+            <button
+              key={`num-${num}`}
+              type="button"
+              className={`${styles.markerButton} ${styles.numberButton} ${isActive ? styles.selected : ""
+                }`}
+              onClick={() => handleNumberClick(num)}
+              aria-label={`Toggle number ${num}`}
+              aria-pressed={isActive}
+              title={`Number ${num}`}
+            >
+              {num}
             </button>
           );
         })}

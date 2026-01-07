@@ -1,4 +1,4 @@
-// src/infra/index.ts
+// src/domain/index.ts
 
 export type { CategoryId, CardId, Card, ThemeId } from "./themes";
 export { CATEGORIES, THEMES, getCards, cardsByCategory } from "./themes";
@@ -19,4 +19,10 @@ export {
 
 export { AppConfigSchema } from "./configSchema";
 
-export { type CellMark, EMPTY_MARK } from "./cell-marks";
+export {
+  type CellMark,
+  type NumberMarkerKey,
+  NUMBER_MARKER_KEYS,
+  EMPTY_MARK,
+  createMaybeMark,
+} from "./cell-marks";

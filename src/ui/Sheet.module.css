@@ -198,15 +198,25 @@
   position: relative;
 }
 
-/* Maybe cell with quadrant coloring */
+/* Maybe cell with vertical stripe coloring */
 .maybeCell {
-  background: conic-gradient(
-    from -45deg,
-    var(--maybe-tr, transparent) 0deg 90deg,
-    var(--maybe-br, transparent) 90deg 180deg,
-    var(--maybe-bl, transparent) 180deg 270deg,
-    var(--maybe-tl, transparent) 270deg 360deg
+  background: linear-gradient(
+    to right,
+    var(--maybe-1, transparent) 0% 25%,
+    var(--maybe-2, transparent) 25% 50%,
+    var(--maybe-3, transparent) 50% 75%,
+    var(--maybe-4, transparent) 75% 100%
   ) !important;
+}
+
+/* White numbers overlay (manual markers) */
+.numbersOverlay {
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.7);
+  letter-spacing: 2px;
+  z-index: 1;
 }
 
 .row {

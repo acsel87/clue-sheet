@@ -1,7 +1,7 @@
 // src/ui/Sheet.tsx
 
 import { useState, useCallback } from "react";
-import type { CardId, ThemeId, MaybeColorKey } from "../domain";
+import type { CardId, ThemeId, MaybeColorKey, NumberMarkerKey } from "../domain";
 import { getCards } from "../domain";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
@@ -37,7 +37,8 @@ export function Sheet(props: Props) {
     onSettings,
   } = props;
 
-  const { getCellMark, setCellMark, toggleMaybePreset, clearMark } = useCellMarks();
+  const { getCellMark, setCellMark, toggleMaybePreset, toggleNumberMarker, clearMark } =
+    useCellMarks();
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
 
   // Dialog states
@@ -122,6 +123,11 @@ export function Sheet(props: Props) {
     toggleMaybePreset(selectedCell.cardId, selectedCell.playerId, preset);
   }
 
+  function handleToggleNumber(num: NumberMarkerKey) {
+    if (!selectedCell) return;
+    toggleNumberMarker(selectedCell.cardId, selectedCell.playerId, num);
+  }
+
   function handleClearMark() {
     if (!selectedCell) return;
     clearMark(selectedCell.cardId, selectedCell.playerId);
@@ -133,6 +139,7 @@ export function Sheet(props: Props) {
   return (
     <div className={styles.sheetContainer}>
       <div className={styles.gridContainer}>
+
         {/* Grid */}
         <SheetGrid
           themeId={themeId}
@@ -164,6 +171,7 @@ export function Sheet(props: Props) {
             onMarkHas={handleMarkHas}
             onMarkNot={handleMarkNot}
             onToggleMaybe={handleToggleMaybe}
+            onToggleNumber={handleToggleNumber}
             onClear={handleClearMark}
             onClose={handleCloseMarkerBar}
           />
