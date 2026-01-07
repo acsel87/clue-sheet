@@ -1,17 +1,23 @@
 // src/App.tsx
 
 import { useState } from "react";
-import { Sheet } from "./ui/Sheet";
-import { SettingsModal } from "./ui/SettingsModal";
+import { Sheet, SettingsModal } from "./ui";
+import { } from "./ui/SettingsModal";
 import type { AppConfig } from "./domain/config";
 import { loadConfig } from "./infra/configStorage";
-import { loadGridPublic, saveGridPublic, clearGridPublic } from "./infra/gridPublicStorage";
+import {
+  loadGridPublic,
+  saveGridPublic,
+  clearGridPublic,
+} from "./infra/gridPublicStorage";
 import type { GridPublicState } from "./infra";
 import "./index.css";
 
 export function App() {
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
-  const [gridPublic, setGridPublic] = useState<GridPublicState>(() => loadGridPublic());
+  const [gridPublic, setGridPublic] = useState<GridPublicState>(() =>
+    loadGridPublic()
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSession, setSettingsSession] = useState(0);
 
@@ -27,32 +33,34 @@ export function App() {
     setGridPublic({ locked: false, selected: [] });
   }
 
+  // Simplified toggle - no limit enforcement here
+  // Validation happens when user clicks the lock button
   function togglePublicCard(cardId: number) {
     if (!needsPublicLock) return;
     if (gridPublic.locked) return;
 
     const selected = new Set<number>(gridPublic.selected);
-    const isSelected = selected.has(cardId);
 
-    if (isSelected) {
+    if (selected.has(cardId)) {
       selected.delete(cardId);
     } else {
-      if (selected.size >= config.publicCount) return;
+      // No limit check - allow selecting any number
       selected.add(cardId);
     }
 
-    const next = { locked: false, selected: Array.from(selected).sort((a, b) => a - b) };
+    const next = {
+      locked: false,
+      selected: Array.from(selected).sort((a, b) => a - b),
+    };
     const persisted = saveGridPublic(next);
     setGridPublic(persisted);
   }
 
+  // Called after Sheet confirms the lock
+  // At this point, validation has already passed
   function lockPublic() {
     if (!needsPublicLock) return;
     if (gridPublic.locked) return;
-    if (gridPublic.selected.length !== config.publicCount) return;
-
-    const ok = window.confirm("Lock public cards?\n\nThis will be permanent until you reset the grid in Settings.");
-    if (!ok) return;
 
     const next = { locked: true, selected: gridPublic.selected };
     const persisted = saveGridPublic(next);

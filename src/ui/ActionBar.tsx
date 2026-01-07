@@ -5,9 +5,11 @@ import styles from "./ActionBar.module.css";
 type Props = {
   onUndo: () => void;
   onSettings: () => void;
+  showLockButton?: boolean;
+  onLock?: () => void;
 };
 
-export function ActionBar({ onUndo, onSettings }: Props) {
+export function ActionBar({ onUndo, onSettings, showLockButton, onLock }: Props) {
   return (
     <div className={styles.actionBar}>
       <button
@@ -29,6 +31,18 @@ export function ActionBar({ onUndo, onSettings }: Props) {
       >
         ⚙︎
       </button>
+
+      {showLockButton && onLock && (
+        <button
+          type="button"
+          className={`button primary ${styles.actionButton}`}
+          onClick={onLock}
+          aria-label="Lock public cards"
+          title="Lock public cards"
+        >
+          🔒
+        </button>
+      )}
     </div>
   );
 }

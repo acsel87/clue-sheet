@@ -16,6 +16,7 @@ type Props = {
   publicSelected: ReadonlyArray<CardId>;
   selectedCell: SelectedCell;
   getCellMark: (cardId: CardId, playerId: number) => CellMark;
+  isGridDisabled: boolean;
   onTogglePublicCard: (cardId: CardId) => void;
   onCellClick: (cardId: CardId, playerId: number) => void;
 };
@@ -29,12 +30,14 @@ export function SheetGrid(props: Props) {
     publicSelected,
     selectedCell,
     getCellMark,
+    isGridDisabled,
     onTogglePublicCard,
     onCellClick,
   } = props;
 
   const cols = Array.from({ length: playerCount }, (_, i) => i + 1);
   const selectedSet = new Set<number>(publicSelected);
+  const lockedRowSet = new Set<number>(publicLocked ? publicSelected : []);
 
   return (
     <div
@@ -67,8 +70,10 @@ export function SheetGrid(props: Props) {
           publicCount={publicCount}
           publicLocked={publicLocked}
           selectedSet={selectedSet}
+          lockedRowSet={lockedRowSet}
           selectedCell={selectedCell}
           getCellMark={getCellMark}
+          isGridDisabled={isGridDisabled}
           onTogglePublicCard={onTogglePublicCard}
           onCellClick={onCellClick}
         />
@@ -77,7 +82,7 @@ export function SheetGrid(props: Props) {
   );
 }
 
-// --- Sub-components (kept in same file as tightly coupled) ---
+// --- Sub-components ---
 
 function CategoryBlock(props: {
   themeId: ThemeId;
@@ -87,8 +92,10 @@ function CategoryBlock(props: {
   publicCount: number;
   publicLocked: boolean;
   selectedSet: ReadonlySet<number>;
+  lockedRowSet: ReadonlySet<number>;
   selectedCell: SelectedCell;
   getCellMark: (cardId: CardId, playerId: number) => CellMark;
+  isGridDisabled: boolean;
   onTogglePublicCard: (cardId: CardId) => void;
   onCellClick: (cardId: CardId, playerId: number) => void;
 }) {
@@ -100,8 +107,10 @@ function CategoryBlock(props: {
     publicCount,
     publicLocked,
     selectedSet,
+    lockedRowSet,
     selectedCell,
     getCellMark,
+    isGridDisabled,
     onTogglePublicCard,
     onCellClick,
   } = props;
@@ -113,11 +122,12 @@ function CategoryBlock(props: {
     <>
       {cardsByCategory(themeId, category).map((card) => {
         const isPublicSelected = selectedSet.has(card.id);
+        const isRowLocked = lockedRowSet.has(card.id);
 
         return (
           <div
             key={card.id}
-            className={styles.row}
+            className={`${styles.row} ${isRowLocked ? styles.lockedRow : ""}`}
             style={{ gridColumn: `1 / span ${cols.length + 1}` }}
           >
             {/* Card name cell */}
@@ -125,31 +135,48 @@ function CategoryBlock(props: {
               type="button"
               className={`${styles.cell} ${styles.cardCell} ${canSelectPublic ? styles.selectable : ""
                 } ${isPublicSelected ? styles.selected : ""} ${needsPublicLock && !publicLocked ? styles.attention : ""
-                }`}
+                } ${isRowLocked ? styles.cardLocked : ""}`}
               style={{ backgroundColor: color }}
               onClick={() => canSelectPublic && onTogglePublicCard(card.id)}
               disabled={!canSelectPublic}
               aria-disabled={!canSelectPublic}
-              title={canSelectPublic ? "Select/deselect as public" : undefined}
+              title={
+                isRowLocked
+                  ? "Public card (locked)"
+                  : canSelectPublic
+                    ? "Select/deselect as public"
+                    : undefined
+              }
             >
-              <span className={styles.cardName}>{card.name}</span>
+              <span
+                className={`${styles.cardName} ${isRowLocked ? styles.cardNameStrikethrough : ""
+                  }`}
+              >
+                {card.name}
+              </span>
             </button>
 
             {/* Mark cells for each player */}
-            {cols.map((playerId) => (
-              <MarkCell
-                key={playerId}
-                cardId={card.id}
-                playerId={playerId}
-                categoryColor={color}
-                mark={getCellMark(card.id, playerId)}
-                isSelected={
-                  selectedCell?.cardId === card.id &&
-                  selectedCell?.playerId === playerId
-                }
-                onClick={() => onCellClick(card.id, playerId)}
-              />
-            ))}
+            {cols.map((playerId) => {
+              const isCellDisabled = isGridDisabled || isRowLocked;
+
+              return (
+                <MarkCell
+                  key={playerId}
+                  cardId={card.id}
+                  playerId={playerId}
+                  categoryColor={color}
+                  mark={getCellMark(card.id, playerId)}
+                  isSelected={
+                    selectedCell?.cardId === card.id &&
+                    selectedCell?.playerId === playerId
+                  }
+                  isDisabled={isCellDisabled}
+                  isLocked={isRowLocked}
+                  onClick={() => !isCellDisabled && onCellClick(card.id, playerId)}
+                />
+              );
+            })}
           </div>
         );
       })}
@@ -163,9 +190,19 @@ function MarkCell(props: {
   categoryColor: string;
   mark: CellMark;
   isSelected: boolean;
+  isDisabled: boolean;
+  isLocked: boolean;
   onClick: () => void;
 }) {
-  const { playerId, categoryColor, mark, isSelected, onClick } = props;
+  const {
+    playerId,
+    categoryColor,
+    mark,
+    isSelected,
+    isDisabled,
+    isLocked,
+    onClick,
+  } = props;
 
   const maybeStyle = getMaybeQuadrantStyle(mark);
 
@@ -173,13 +210,16 @@ function MarkCell(props: {
     <button
       type="button"
       className={`${styles.cell} ${styles.markCell} ${mark.type === "maybe" ? styles.maybeCell : ""
-        } ${isSelected ? styles.cellSelected : ""}`}
+        } ${isSelected ? styles.cellSelected : ""} ${isDisabled ? styles.cellDisabled : ""
+        } ${isLocked ? styles.cellLocked : ""}`}
       style={{
         backgroundColor: mark.type === "maybe" ? undefined : categoryColor,
         borderColor: PLAYER_COLORS[playerId - 1],
         ...maybeStyle,
       }}
       onClick={onClick}
+      disabled={isDisabled}
+      aria-disabled={isDisabled}
       aria-label={`Cell for player ${playerId}`}
     >
       <CellContent mark={mark} />

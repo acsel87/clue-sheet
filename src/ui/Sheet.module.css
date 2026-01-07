@@ -29,7 +29,7 @@
   padding: 4px 0 0 0;
 }
 
-/* Public Bar */
+/* Public Bar - informational display */
 .publicBar {
   display: flex;
   justify-content: space-between;
@@ -63,6 +63,7 @@
   padding: 4px 8px;
   font-size: 11px;
   color: var(--muted);
+  background: rgba(59, 130, 246, 0.15);
 }
 
 /* Grid */
@@ -124,6 +125,13 @@
   flex: 1;
 }
 
+/* Strikethrough for locked public card names */
+.cardNameStrikethrough {
+  text-decoration: line-through;
+  text-decoration-color: #3b82f6;
+  text-decoration-thickness: 2px;
+}
+
 .markCell {
   font-size: 14px;
   background: rgba(255, 255, 255, 0.02);
@@ -133,11 +141,11 @@
   position: relative;
 }
 
-.markCell:hover {
+.markCell:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.markCell:active {
+.markCell:active:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
 }
 
@@ -146,6 +154,48 @@
   outline: 2px solid rgba(255, 255, 255, 0.6);
   outline-offset: -1px;
   z-index: 1;
+}
+
+/* Disabled cell state (grid locked waiting for public card selection) */
+.cellDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cellDisabled:hover {
+  background: inherit;
+}
+
+/* Locked cell state (public card row after locking) */
+.cellLocked {
+  opacity: 0.6;
+  cursor: not-allowed;
+  position: relative;
+}
+
+/* Blue strikethrough overlay for locked cells */
+.cellLocked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  background: #3b82f6;
+  transform: translateY(-50%);
+  pointer-events: none;
+  border-radius: 1px;
+}
+
+/* Locked card name cell */
+.cardLocked {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Locked row container */
+.lockedRow {
+  position: relative;
 }
 
 /* Maybe cell with quadrant coloring */
@@ -163,7 +213,7 @@
   display: contents;
 }
 
-/* Interactive states */
+/* Interactive states for public card selection */
 .selectable {
   cursor: pointer;
 }

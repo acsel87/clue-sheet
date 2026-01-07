@@ -2,9 +2,11 @@
 
 import { useState, useCallback } from "react";
 import type { CardId, ThemeId, MaybeColorKey } from "../domain";
+import { getCards } from "../domain";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
 import { SheetGrid } from "./SheetGrid";
+import { InfoDialog, ConfirmDialog } from "./dialogs";
 import { useCellMarks } from "./hooks";
 import styles from "./Sheet.module.css";
 
@@ -38,8 +40,21 @@ export function Sheet(props: Props) {
   const { getCellMark, setCellMark, toggleMaybePreset, clearMark } = useCellMarks();
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
 
+  // Dialog states
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [infoDialogMessage, setInfoDialogMessage] = useState("");
+  const [showLockConfirmDialog, setShowLockConfirmDialog] = useState(false);
+
   const needsPublicLock = publicCount > 0;
-  const isSelectionComplete = publicSelected.length === publicCount;
+  const isGridDisabled = needsPublicLock && !publicLocked;
+
+  // Get selected card names for confirmation dialog
+  const getSelectedCardNames = useCallback((): string[] => {
+    const cards = getCards(themeId);
+    return publicSelected
+      .map((id) => cards.find((c) => c.id === id)?.name)
+      .filter((name): name is string => name !== undefined);
+  }, [themeId, publicSelected]);
 
   // Placeholder validation - replace with real logic later
   const createValidation = useCallback(
@@ -51,8 +66,38 @@ export function Sheet(props: Props) {
     []
   );
 
-  // Handlers
+  // Lock button handler - validates before showing confirmation
+  function handleLockClick() {
+    if (publicSelected.length !== publicCount) {
+      setInfoDialogMessage(
+        `Please select exactly ${publicCount} public card${publicCount !== 1 ? "s" : ""}.\n\nCurrently selected: ${publicSelected.length}`
+      );
+      setShowInfoDialog(true);
+      return;
+    }
+    setShowLockConfirmDialog(true);
+  }
+
+  // After user confirms locking
+  function handleLockConfirmed() {
+    // Mark all cells in public card rows as NOT
+    publicSelected.forEach((cardId) => {
+      for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
+        setCellMark(cardId, playerId, { type: "not" });
+      }
+    });
+
+    // Call parent's lock handler
+    onLockPublic();
+    setShowLockConfirmDialog(false);
+  }
+
+  // Cell click handlers
   function handleCellClick(cardId: CardId, playerId: number) {
+    // Don't allow cell selection if grid is disabled or row is locked
+    if (isGridDisabled) return;
+    if (publicLocked && publicSelected.includes(cardId)) return;
+
     setSelectedCell({ cardId, playerId });
   }
 
@@ -82,40 +127,12 @@ export function Sheet(props: Props) {
     clearMark(selectedCell.cardId, selectedCell.playerId);
   }
 
+  // Build confirmation message with card list
+  const confirmMessage = `The following card${publicSelected.length !== 1 ? "s" : ""} will be locked as public:\n\n• ${getSelectedCardNames().join("\n• ")}\n\nAll cells in these rows will be marked as NOT.`;
+
   return (
     <div className={styles.sheetContainer}>
       <div className={styles.gridContainer}>
-        {/* Public cards bar */}
-        {needsPublicLock && (
-          <div className={styles.publicBar}>
-            <div className={styles.publicBarContent}>
-              <span className={styles.publicBarTitle}>Public cards</span>
-              <span className={styles.publicBarMeta}>
-                {publicLocked ? "Locked" : "Unlocked"} • {publicSelected.length}/
-                {publicCount} selected
-              </span>
-            </div>
-
-            {!publicLocked ? (
-              <button
-                type="button"
-                className="button primary"
-                disabled={!isSelectionComplete}
-                onClick={onLockPublic}
-                title={
-                  isSelectionComplete
-                    ? "Lock public cards"
-                    : "Select all public cards first"
-                }
-              >
-                Lock
-              </button>
-            ) : (
-              <span className={styles.publicLockedPill}>Locked</span>
-            )}
-          </div>
-        )}
-
         {/* Grid */}
         <SheetGrid
           themeId={themeId}
@@ -125,6 +142,7 @@ export function Sheet(props: Props) {
           publicSelected={publicSelected}
           selectedCell={selectedCell}
           getCellMark={getCellMark}
+          isGridDisabled={isGridDisabled}
           onTogglePublicCard={onTogglePublicCard}
           onCellClick={handleCellClick}
         />
@@ -132,7 +150,12 @@ export function Sheet(props: Props) {
 
       {/* Sidebar */}
       <div className={styles.sidebar}>
-        <ActionBar onUndo={onUndo} onSettings={onSettings} />
+        <ActionBar
+          onUndo={onUndo}
+          onSettings={onSettings}
+          showLockButton={needsPublicLock && !publicLocked}
+          onLock={handleLockClick}
+        />
 
         {selectedCell && (
           <MarkerBar
@@ -146,6 +169,24 @@ export function Sheet(props: Props) {
           />
         )}
       </div>
+
+      {/* Validation info dialog */}
+      <InfoDialog
+        isOpen={showInfoDialog}
+        title="Cannot Lock"
+        message={infoDialogMessage}
+        onClose={() => setShowInfoDialog(false)}
+      />
+
+      {/* Lock confirmation dialog */}
+      <ConfirmDialog
+        isOpen={showLockConfirmDialog}
+        title="Lock Public Cards?"
+        message={confirmMessage}
+        confirmLabel="Lock"
+        onConfirm={handleLockConfirmed}
+        onCancel={() => setShowLockConfirmDialog(false)}
+      />
     </div>
   );
 }
