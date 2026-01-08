@@ -10,7 +10,8 @@ import {
 } from "../domain/config";
 import { THEMES } from "../domain/themes";
 import { saveConfig } from "../infra/configStorage";
-import { ConfirmDialog } from "./dialogs";
+import { ConfirmDialog, InfoDialog } from "./dialogs";
+import styles from "./SettingsModal.module.css";
 
 type Props = {
   isOpen: boolean;
@@ -19,6 +20,48 @@ type Props = {
   onSaved: (next: AppConfig) => void;
   onResetGridRequested: () => void;
 };
+
+// --- Auto Rules Configuration ---
+// These are placeholder rules - actual implementation will come during integration
+type AutoRuleId = "murderDetection" | "publicCards" | "ownCards" | "columnElimination";
+
+type AutoRule = {
+  id: AutoRuleId;
+  name: string;
+  description: string;
+  enabled: boolean;
+};
+
+const DEFAULT_AUTO_RULES: AutoRule[] = [
+  {
+    id: "murderDetection",
+    name: "Murder item detection",
+    description:
+      "When all cells in a row are marked as NOT, the card name will be highlighted as a potential murder item with a red circular border.",
+    enabled: true,
+  },
+  {
+    id: "publicCards",
+    name: "Public cards auto-mark",
+    description:
+      "When public cards are locked, all cells in those rows are automatically marked as NOT and the rows are disabled.",
+    enabled: true,
+  },
+  {
+    id: "ownCards",
+    name: "Own cards auto-mark",
+    description:
+      "When you mark your own card as HAS, automatically mark all other cells in that row as NOT, and mark all other cards in your column as NOT.",
+    enabled: true,
+  },
+  {
+    id: "columnElimination",
+    name: "Column elimination",
+    description:
+      "When a card is marked as HAS for any player, automatically mark all other cells in that row as NOT.",
+    enabled: false,
+  },
+];
 
 function defaultPlayerName(id: PlayerId): string {
   return id === 1 ? "You" : `P${id}`;
@@ -33,6 +76,49 @@ function nextAvailablePlayerId(
   return null;
 }
 
+// --- Stepper Input Component ---
+type StepperProps = {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+};
+
+function StepperInput({ label, value, min, max, onChange }: StepperProps) {
+  const canDecrement = value > min;
+  const canIncrement = value < max;
+
+  return (
+    <div className={styles.stepperWrapper}>
+      <span className="label">{label}</span>
+      <div className={styles.stepper}>
+        <button
+          type="button"
+          className={styles.stepperButton}
+          onClick={() => canDecrement && onChange(value - 1)}
+          disabled={!canDecrement}
+          aria-label={`Decrease ${label}`}
+        >
+          −
+        </button>
+        <span className={styles.stepperValue} aria-live="polite">
+          {value}
+        </span>
+        <button
+          type="button"
+          className={styles.stepperButton}
+          onClick={() => canIncrement && onChange(value + 1)}
+          disabled={!canIncrement}
+          aria-label={`Increase ${label}`}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsModal(props: Props) {
   const { isOpen, activeConfig, onClose, onSaved, onResetGridRequested } = props;
 
@@ -40,10 +126,14 @@ export function SettingsModal(props: Props) {
   const openerRef = useRef<HTMLElement | null>(null);
 
   const [draft, setDraft] = useState<AppConfig>(() => activeConfig);
+  const [autoRules, setAutoRules] = useState<AutoRule[]>(() => DEFAULT_AUTO_RULES);
 
-  // Confirm dialog states
+  // Dialog states
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [ruleInfoDialog, setRuleInfoDialog] = useState<{ title: string; message: string } | null>(
+    null
+  );
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -122,6 +212,16 @@ export function SettingsModal(props: Props) {
     }));
   }
 
+  function toggleAutoRule(ruleId: AutoRuleId) {
+    setAutoRules((prev) =>
+      prev.map((rule) => (rule.id === ruleId ? { ...rule, enabled: !rule.enabled } : rule))
+    );
+  }
+
+  function showRuleInfo(rule: AutoRule) {
+    setRuleInfoDialog({ title: rule.name, message: rule.description });
+  }
+
   function handleSaveClick() {
     setShowSaveConfirm(true);
   }
@@ -130,6 +230,7 @@ export function SettingsModal(props: Props) {
     setShowSaveConfirm(false);
     try {
       const persisted = saveConfig(draft);
+      // TODO: Also persist autoRules when we implement storage for them
       onResetGridRequested();
       onSaved(persisted);
       onClose();
@@ -163,6 +264,7 @@ export function SettingsModal(props: Props) {
             </button>
           </header>
 
+          {/* Theme Selection */}
           <div className="modalSection">
             <label className="field">
               <span className="label">Theme</span>
@@ -173,7 +275,7 @@ export function SettingsModal(props: Props) {
                 }
               >
                 {THEMES.map((t) => (
-                  <option key={t.id} value={t.id}>
+                  <option key={t.id} value={t.id} className={styles.dropdownOption}>
                     {t.label}
                   </option>
                 ))}
@@ -181,32 +283,25 @@ export function SettingsModal(props: Props) {
             </label>
           </div>
 
+          {/* Numeric Steppers */}
           <div className="modalSection twoCols">
-            <label className="field">
-              <span className="label">Hand size</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={21}
-                value={draft.handSize}
-                onChange={(e) => setField("handSize", Number(e.target.value))}
-              />
-            </label>
-
-            <label className="field">
-              <span className="label">Public cards</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={21}
-                value={draft.publicCount}
-                onChange={(e) => setField("publicCount", Number(e.target.value))}
-              />
-            </label>
+            <StepperInput
+              label="Hand size"
+              value={draft.handSize}
+              min={0}
+              max={21}
+              onChange={(v) => setField("handSize", v)}
+            />
+            <StepperInput
+              label="Public cards"
+              value={draft.publicCount}
+              min={0}
+              max={21}
+              onChange={(v) => setField("publicCount", v)}
+            />
           </div>
 
+          {/* Players Section */}
           <div className="modalSection">
             <div className="sectionTitle">Players</div>
 
@@ -225,7 +320,7 @@ export function SettingsModal(props: Props) {
                     <input
                       type="text"
                       value={p.name}
-                      maxLength={30}
+                      maxLength={3}
                       onChange={(e) => setPlayerName(p.id, e.target.value)}
                     />
                   </label>
@@ -255,6 +350,37 @@ export function SettingsModal(props: Props) {
             })}
           </div>
 
+          {/* Auto Rules Section */}
+          <div className={`modalSection ${styles.rulesSection}`}>
+            <div className="sectionTitle">Auto Rules</div>
+
+            {autoRules.map((rule) => (
+              <div
+                key={rule.id}
+                className={`${styles.ruleRow} ${!rule.enabled ? styles.disabled : ""}`}
+              >
+                <button
+                  type="button"
+                  className={styles.ruleInfoButton}
+                  onClick={() => showRuleInfo(rule)}
+                  aria-label={`Info about ${rule.name}`}
+                  title="More info"
+                >
+                  ?
+                </button>
+                <span className={styles.ruleName}>{rule.name}</span>
+                <input
+                  type="checkbox"
+                  className={styles.ruleCheckbox}
+                  checked={rule.enabled}
+                  onChange={() => toggleAutoRule(rule.id)}
+                  aria-label={`Enable ${rule.name}`}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
           <div className="modalFooter">
             <button
               type="button"
@@ -290,6 +416,14 @@ export function SettingsModal(props: Props) {
         confirmLabel="Apply"
         onConfirm={handleSaveConfirmed}
         onCancel={handleSaveCancelled}
+      />
+
+      {/* Rule info dialog */}
+      <InfoDialog
+        isOpen={ruleInfoDialog !== null}
+        title={ruleInfoDialog?.title}
+        message={ruleInfoDialog?.message ?? ""}
+        onClose={() => setRuleInfoDialog(null)}
       />
     </>
   );

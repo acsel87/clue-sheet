@@ -5,7 +5,7 @@ import styles from "./dialogs.module.css";
 
 type Props = {
   isOpen: boolean;
-  title?: string;
+  title?: string | undefined;
   message: string;
   onClose: () => void;
 };

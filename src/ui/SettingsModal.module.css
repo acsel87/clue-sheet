@@ -1,0 +1,154 @@
+/* src/ui/SettingsModal.module.css */
+
+/* Dropdown Menu Component */
+.dropdownOption {
+  background-color: var(--background);
+  color: black;
+}
+
+/* Stepper Input Component */
+.stepperWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.stepperButton {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 300;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.stepperButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.stepperButton:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.stepperButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.stepperButton:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: -2px;
+}
+
+.stepperValue {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 40px;
+  padding: 0 4px;
+  background: transparent;
+  /* Make the number not selectable to avoid accidental selection */
+  user-select: none;
+}
+
+/* Auto Rules Section */
+.rulesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.ruleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.ruleInfoButton {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.ruleInfoButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.ruleInfoButton:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+}
+
+.ruleName {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ruleCheckbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ruleCheckbox:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+}
+
+/* Rule disabled state */
+.ruleRow.disabled {
+  opacity: 0.5;
+}
+
+.ruleRow.disabled .ruleName {
+  color: var(--muted);
+}
+
+.ruleRow.disabled .ruleCheckbox {
+  cursor: not-allowed;
+}
+
+/* Horizontal divider */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
