@@ -1,35 +1,57 @@
 // src/domain/cell-marks.ts
 
 /**
- * Number markers - white text overlay
- * Can exist on ANY primary marker type
- * Will interact with automation rules (Phase 2+)
+ * NUMBER MARKERS (1-4)
+ *
+ * Semantic role: AUTOMATION-AWARE "maybe" markers
+ *
+ * These are the primary deduction markers used to track which players
+ * might have which cards. They interact with automation rules:
+ * - Auto-elimination when a card is found
+ * - Column-wide removal constraints
+ * - Deduction logic integration
+ *
+ * Displayed as: White text overlay (can appear on ANY primary marker)
  */
 export type NumberMarkerKey = 1 | 2 | 3 | 4;
 export const NUMBER_MARKER_KEYS = [1, 2, 3, 4] as const;
 
 /**
- * Bar colors - colored vertical stripes
- * Only used when primary is "bars"
- * Manual-only helper markers (no rule interactions)
+ * BAR COLOR MARKERS (1-4)
+ *
+ * Semantic role: MANUAL-ONLY visual helpers
+ *
+ * These are optional colored stripe markers for players who want
+ * additional visual categorization. They do NOT interact with any
+ * automation rules - purely for personal organization.
+ *
+ * Displayed as: Vertical colored stripes (only when primary is "bars")
  */
 export type BarColorKey = 1 | 2 | 3 | 4;
 export const BAR_COLOR_KEYS = [1, 2, 3, 4] as const;
 
 /**
- * Primary marker types (mutually exclusive)
- * - empty: no primary marker
- * - has: player has this card (checkmark)
- * - not: player does not have this card (X)
- * - bars: colored stripes helper marker
+ * PRIMARY MARKER TYPES (mutually exclusive)
+ *
+ * - empty: No primary marker (cell may still have number overlays)
+ * - has: Player definitely HAS this card (checkmark icon)
+ * - not: Player definitely does NOT have this card (X icon)
+ * - bars: Visual helper stripes (no game logic meaning)
  */
 export type PrimaryMark = "empty" | "has" | "not" | "bars";
 
 /**
- * Cell mark structure
- * - primary: main marker (mutually exclusive)
- * - numbers: white number text overlay (can exist on ANY primary)
- * - barColors: which colored stripes (only meaningful when primary is "bars")
+ * CELL MARK STRUCTURE
+ *
+ * Combines a primary marker with optional overlays:
+ * - primary: The main marker state (mutually exclusive)
+ * - numbers: Automation-aware "maybe" indicators (can overlay ANY primary)
+ * - barColors: Which colored stripes to show (only when primary is "bars")
+ *
+ * Examples:
+ * - { primary: "empty", numbers: {1,2}, barColors: {} } → Just "12" text
+ * - { primary: "has", numbers: {3}, barColors: {} } → Checkmark with "3" overlay
+ * - { primary: "bars", numbers: {}, barColors: {1,3} } → Red and green stripes
  */
 export type CellMark = Readonly<{
   primary: PrimaryMark;
@@ -49,9 +71,14 @@ export function isEmptyMark(mark: CellMark): boolean {
   return mark.primary === "empty" && mark.numbers.size === 0;
 }
 
-/** Check if mark has any numbers */
+/** Check if mark has any numbers (automation-aware markers) */
 export function hasNumbers(mark: CellMark): boolean {
   return mark.numbers.size > 0;
+}
+
+/** Check if mark has any bar colors */
+export function hasBarColors(mark: CellMark): boolean {
+  return mark.barColors.size > 0;
 }
 
 /** Create a mark with sensible defaults */
@@ -70,12 +97,12 @@ export function createMark(
   return { primary, numbers, barColors: effectiveBarColors };
 }
 
-/** Create a mark preserving existing numbers */
+/** Set primary marker, preserving numbers */
 export function withPrimary(mark: CellMark, primary: PrimaryMark): CellMark {
   return createMark(primary, mark.numbers, mark.barColors);
 }
 
-/** Create a mark with toggled number */
+/** Toggle a number marker (automation-aware) */
 export function withToggledNumber(
   mark: CellMark,
   num: NumberMarkerKey
@@ -89,7 +116,7 @@ export function withToggledNumber(
   return createMark(mark.primary, newNumbers, mark.barColors);
 }
 
-/** Create a mark with toggled bar color (only affects "bars" primary) */
+/** Toggle a bar color (manual-only helper) */
 export function withToggledBarColor(
   mark: CellMark,
   color: BarColorKey
@@ -101,7 +128,7 @@ export function withToggledBarColor(
     newColors.add(color);
   }
 
-  // If primary wasn't "bars", switch to it; if no colors left, switch to empty
+  // If no colors left, revert to empty primary
   if (newColors.size === 0) {
     return createMark("empty", mark.numbers);
   }
@@ -114,4 +141,10 @@ export function withoutNumber(mark: CellMark, num: NumberMarkerKey): CellMark {
   const newNumbers = new Set(mark.numbers);
   newNumbers.delete(num);
   return createMark(mark.primary, newNumbers, mark.barColors);
+}
+
+/** Remove all numbers from a mark */
+export function withoutAllNumbers(mark: CellMark): CellMark {
+  if (mark.numbers.size === 0) return mark;
+  return createMark(mark.primary, new Set(), mark.barColors);
 }

@@ -13,22 +13,31 @@ export {
 
 export { AppConfigSchema } from "./configSchema";
 
-// Cell marks - restructured
+// Cell marks
 export {
+  // Types
   type CellMark,
   type PrimaryMark,
-  type NumberMarkerKey,
-  type BarColorKey,
+  type NumberMarkerKey, // Automation-aware "maybe" markers
+  type BarColorKey, // Manual-only visual helpers
+
+  // Constants
   NUMBER_MARKER_KEYS,
   BAR_COLOR_KEYS,
   EMPTY_MARK,
+
+  // Predicates
   isEmptyMark,
   hasNumbers,
+  hasBarColors,
+
+  // Constructors/transformers
   createMark,
   withPrimary,
   withToggledNumber,
   withToggledBarColor,
   withoutNumber,
+  withoutAllNumbers,
 } from "./cell-marks";
 
 // Bar colors (visual helper markers)

@@ -12,12 +12,12 @@ import {
   withToggledNumber,
   withToggledBarColor,
   withoutNumber,
+  withoutAllNumbers,
   isEmptyMark,
 } from "../../domain";
 
 type CellKey = `${CardId}-${number}`;
 
-/** Parse a CellKey back to cardId and playerId */
 function parseKey(key: CellKey): { cardId: CardId; playerId: number } {
   const [cardStr, playerStr] = key.split("-");
   return {
@@ -26,15 +26,23 @@ function parseKey(key: CellKey): { cardId: CardId; playerId: number } {
   };
 }
 
-/** Create a CellKey from cardId and playerId */
 function makeKey(cardId: CardId, playerId: number): CellKey {
   return `${cardId}-${playerId}`;
 }
 
+/**
+ * Hook for managing cell marks state
+ *
+ * Semantic distinction:
+ * - Numbers: Automation-aware "maybe" markers - used for deduction tracking
+ * - Bars: Manual-only visual helpers - no rule interactions
+ */
 export function useCellMarks() {
   const [cellMarks, setCellMarks] = useState<Map<CellKey, CellMark>>(new Map());
 
-  // --- Basic accessors ---
+  // ============================================================
+  // BASIC ACCESSORS
+  // ============================================================
 
   const getCellMark = useCallback(
     (cardId: CardId, playerId: number): CellMark => {
@@ -59,7 +67,9 @@ export function useCellMarks() {
     []
   );
 
-  // --- Row/Column accessor functions (derived, not stored) ---
+  // ============================================================
+  // ROW/COLUMN ACCESSORS (for rule processing)
+  // ============================================================
 
   /** Get all marks in a row (by cardId) */
   const getRowMarks = useCallback(
@@ -134,7 +144,38 @@ export function useCellMarks() {
     [cellMarks]
   );
 
-  // --- Mark mutation helpers ---
+  /** Count how many cells in a row have a specific primary mark */
+  const countPrimaryInRow = useCallback(
+    (cardId: CardId, primary: PrimaryMark): number => {
+      let count = 0;
+      for (const [key, mark] of cellMarks) {
+        const parsed = parseKey(key);
+        if (parsed.cardId === cardId && mark.primary === primary) {
+          count++;
+        }
+      }
+      return count;
+    },
+    [cellMarks]
+  );
+
+  /** Check if a specific number exists anywhere in a column */
+  const columnHasNumber = useCallback(
+    (playerId: number, num: NumberMarkerKey): boolean => {
+      for (const [key, mark] of cellMarks) {
+        const parsed = parseKey(key);
+        if (parsed.playerId === playerId && mark.numbers.has(num)) {
+          return true;
+        }
+      }
+      return false;
+    },
+    [cellMarks]
+  );
+
+  // ============================================================
+  // PRIMARY MARK MUTATIONS
+  // ============================================================
 
   /** Set primary mark, preserving numbers */
   const setPrimary = useCallback(
@@ -146,6 +187,11 @@ export function useCellMarks() {
     [getCellMark, setCellMark]
   );
 
+  // ============================================================
+  // NUMBER MARKER MUTATIONS (Automation-aware)
+  // These will have constraints applied in Phase 3
+  // ============================================================
+
   /** Toggle a number marker on a cell */
   const toggleNumber = useCallback(
     (cardId: CardId, playerId: number, num: NumberMarkerKey) => {
@@ -156,17 +202,7 @@ export function useCellMarks() {
     [getCellMark, setCellMark]
   );
 
-  /** Toggle a bar color on a cell (sets primary to "bars" if needed) */
-  const toggleBarColor = useCallback(
-    (cardId: CardId, playerId: number, color: BarColorKey) => {
-      const current = getCellMark(cardId, playerId);
-      const newMark = withToggledBarColor(current, color);
-      setCellMark(cardId, playerId, newMark);
-    },
-    [getCellMark, setCellMark]
-  );
-
-  /** Remove a number from all cells in a column */
+  /** Remove a specific number from all cells in a column */
   const removeNumberFromColumn = useCallback(
     (playerId: number, num: NumberMarkerKey) => {
       setCellMarks((prev) => {
@@ -188,6 +224,36 @@ export function useCellMarks() {
     []
   );
 
+  /** Remove all numbers from a specific cell */
+  const clearNumbersFromCell = useCallback(
+    (cardId: CardId, playerId: number) => {
+      const current = getCellMark(cardId, playerId);
+      if (current.numbers.size === 0) return;
+      const newMark = withoutAllNumbers(current);
+      setCellMark(cardId, playerId, newMark);
+    },
+    [getCellMark, setCellMark]
+  );
+
+  // ============================================================
+  // BAR COLOR MUTATIONS (Manual-only helpers)
+  // No constraints - purely visual helpers
+  // ============================================================
+
+  /** Toggle a bar color on a cell (sets primary to "bars" if needed) */
+  const toggleBarColor = useCallback(
+    (cardId: CardId, playerId: number, color: BarColorKey) => {
+      const current = getCellMark(cardId, playerId);
+      const newMark = withToggledBarColor(current, color);
+      setCellMark(cardId, playerId, newMark);
+    },
+    [getCellMark, setCellMark]
+  );
+
+  // ============================================================
+  // BULK OPERATIONS
+  // ============================================================
+
   /** Clear a cell completely */
   const clearMark = useCallback(
     (cardId: CardId, playerId: number) => {
@@ -196,7 +262,7 @@ export function useCellMarks() {
     [setCellMark]
   );
 
-  /** Batch set marks for multiple cells (useful for public cards, etc.) */
+  /** Batch set marks for multiple cells */
   const batchSetMarks = useCallback(
     (updates: Array<{ cardId: CardId; playerId: number; mark: CellMark }>) => {
       setCellMarks((prev) => {
@@ -215,9 +281,11 @@ export function useCellMarks() {
     []
   );
 
-  // --- Derived state for quick checks ---
+  // ============================================================
+  // DERIVED STATE (for display/debugging)
+  // ============================================================
 
-  /** All unique numbers currently used (for debugging/display) */
+  /** All unique numbers currently in use */
   const allUsedNumbers = useMemo(() => {
     const numbers = new Set<NumberMarkerKey>();
     for (const mark of cellMarks.values()) {
@@ -228,27 +296,40 @@ export function useCellMarks() {
     return numbers;
   }, [cellMarks]);
 
+  /** Total cells with marks (for debugging) */
+  const totalMarkedCells = useMemo(() => cellMarks.size, [cellMarks]);
+
   return {
     // Basic accessors
     getCellMark,
     setCellMark,
 
-    // Row/column accessors
+    // Row/column accessors (for rule processing)
     getRowMarks,
     getColumnMarks,
     findNumberInColumn,
     rowHasPrimary,
     columnHasPrimary,
+    countPrimaryInRow,
+    columnHasNumber,
 
-    // Mutation helpers
+    // Primary mark mutations
     setPrimary,
+
+    // Number mutations (automation-aware)
     toggleNumber,
-    toggleBarColor,
     removeNumberFromColumn,
+    clearNumbersFromCell,
+
+    // Bar color mutations (manual-only)
+    toggleBarColor,
+
+    // Bulk operations
     clearMark,
     batchSetMarks,
 
     // Derived state
     allUsedNumbers,
+    totalMarkedCells,
   };
 }

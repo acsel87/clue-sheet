@@ -12,11 +12,20 @@ export type ValidationResult = {
   reason?: string;
 };
 
+/**
+ * Validation functions for marker operations
+ * 
+ * Note the semantic distinction:
+ * - Numbers: automation-aware, may have constraints (Phase 3)
+ * - Bars: manual-only, typically always allowed
+ */
 export type ValidationFns = {
   canMarkHas: () => ValidationResult;
   canMarkNot: () => ValidationResult;
-  canToggleBar: (color: BarColorKey) => ValidationResult;
+  /** Numbers are automation-aware - constraints apply in Phase 3 */
   canToggleNumber: (num: NumberMarkerKey) => ValidationResult;
+  /** Bars are manual-only helpers - typically no constraints */
+  canToggleBar: (color: BarColorKey) => ValidationResult;
 };
 
 type Props = {
@@ -24,8 +33,8 @@ type Props = {
   validation: ValidationFns;
   onMarkHas: () => void;
   onMarkNot: () => void;
-  onToggleBar: (color: BarColorKey) => void;
   onToggleNumber: (num: NumberMarkerKey) => void;
+  onToggleBar: (color: BarColorKey) => void;
   onClear: () => void;
   onClose: () => void;
 };
@@ -36,8 +45,8 @@ export function MarkerBar(props: Props) {
     validation,
     onMarkHas,
     onMarkNot,
-    onToggleBar,
     onToggleNumber,
+    onToggleBar,
     onClear,
     onClose,
   } = props;
@@ -50,9 +59,8 @@ export function MarkerBar(props: Props) {
   const isHasSelected = currentMark.primary === "has";
   const isNotSelected = currentMark.primary === "not";
 
-  // Get active bar colors and numbers from current mark
-  const activeBarColors = currentMark.barColors;
   const activeNumbers = currentMark.numbers;
+  const activeBarColors = currentMark.barColors;
 
   function handleHasClick() {
     if (!hasValidation.allowed) {
@@ -78,56 +86,55 @@ export function MarkerBar(props: Props) {
     }
   }
 
-  function handleBarClick(color: BarColorKey) {
-    const barValidation = validation.canToggleBar(color);
-    if (!barValidation.allowed) {
-      setInfoMessage(barValidation.reason ?? "Cannot toggle bar marker");
-      return;
-    }
-    onToggleBar(color);
-  }
-
   function handleNumberClick(num: NumberMarkerKey) {
     const numValidation = validation.canToggleNumber(num);
     if (!numValidation.allowed) {
-      setInfoMessage(numValidation.reason ?? "Cannot toggle number");
+      setInfoMessage(numValidation.reason ?? "Cannot toggle number marker");
       return;
     }
     onToggleNumber(num);
   }
 
+  function handleBarClick(color: BarColorKey) {
+    const barValidation = validation.canToggleBar(color);
+    if (!barValidation.allowed) {
+      setInfoMessage(barValidation.reason ?? "Cannot toggle color bar");
+      return;
+    }
+    onToggleBar(color);
+  }
+
   return (
     <>
       <div className={styles.markerBar} role="toolbar" aria-label="Cell marking options">
-        {/* HAS button */}
+        {/* === PRIMARY MARKERS (HAS/NOT) === */}
         <button
           type="button"
           className={`${styles.markerButton} ${isHasSelected ? styles.selected : ""} ${!hasValidation.allowed ? styles.disabled : ""
             }`}
           onClick={handleHasClick}
-          aria-label="Mark as HAS"
+          aria-label="Mark as HAS - player has this card"
           aria-pressed={isHasSelected}
-          title="Mark as HAS"
+          title="HAS - Player has this card"
         >
           <HasIcon width={18} height={18} />
         </button>
 
-        {/* NOT button */}
         <button
           type="button"
           className={`${styles.markerButton} ${isNotSelected ? styles.selected : ""} ${!notValidation.allowed ? styles.disabled : ""
             }`}
           onClick={handleNotClick}
-          aria-label="Mark as NOT"
+          aria-label="Mark as NOT - player does not have this card"
           aria-pressed={isNotSelected}
-          title="Mark as NOT"
+          title="NOT - Player does not have this card"
         >
           <NotIcon width={18} height={18} />
         </button>
 
         <div className={styles.divider} />
 
-        {/* Number marker buttons (white text - will be automation-aware) */}
+        {/* === NUMBER MARKERS (Automation-aware "maybe" indicators) === */}
         {NUMBER_MARKER_KEYS.map((num) => {
           const isActive = activeNumbers.has(num);
           const numValidation = validation.canToggleNumber(num);
@@ -139,9 +146,9 @@ export function MarkerBar(props: Props) {
               className={`${styles.markerButton} ${styles.numberButton} ${isActive ? styles.selected : ""
                 } ${!numValidation.allowed ? styles.disabled : ""}`}
               onClick={() => handleNumberClick(num)}
-              aria-label={`Toggle number ${num}`}
+              aria-label={`Toggle maybe marker ${num}`}
               aria-pressed={isActive}
-              title={`Number ${num}`}
+              title={`Maybe ${num} - Track possible card holders`}
             >
               {num}
             </button>
@@ -150,7 +157,7 @@ export function MarkerBar(props: Props) {
 
         <div className={styles.divider} />
 
-        {/* Bar color buttons (colored stripes - manual helper) */}
+        {/* === BAR COLOR MARKERS (Manual-only visual helpers) === */}
         {BAR_COLOR_KEYS.map((color) => {
           const isActive = activeBarColors.has(color);
           const barValidation = validation.canToggleBar(color);
@@ -162,9 +169,9 @@ export function MarkerBar(props: Props) {
               className={`${styles.markerButton} ${isActive ? styles.selected : ""} ${!barValidation.allowed ? styles.disabled : ""
                 }`}
               onClick={() => handleBarClick(color)}
-              aria-label={`Toggle bar color ${color}`}
+              aria-label={`Toggle color helper ${color}`}
               aria-pressed={isActive}
-              title={`Color bar ${color}`}
+              title={`Color ${color} - Visual helper (manual only)`}
             >
               <MaybeIcon
                 width={16}
@@ -177,7 +184,7 @@ export function MarkerBar(props: Props) {
 
         <div className={styles.divider} />
 
-        {/* Close button */}
+        {/* === CLOSE === */}
         <button
           type="button"
           className={styles.markerButton}

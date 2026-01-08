@@ -64,18 +64,29 @@ export function Sheet(props: Props) {
       .filter((name): name is string => name !== undefined);
   }, [themeId, publicSelected]);
 
-  // Placeholder validation - will be expanded in Phase 3
+  /**
+   * Validation factory for marker operations
+   * 
+   * Phase 2: Placeholder validation (all allowed)
+   * Phase 3: Will add real constraints for numbers
+   * 
+   * Semantic distinction:
+   * - Numbers: automation-aware, will have constraints
+   * - Bars: manual-only, typically always allowed
+   */
   const createValidation = useCallback(
     (_cardId: CardId, _playerId: number): ValidationFns => ({
       canMarkHas: () => ({ allowed: true }),
       canMarkNot: () => ({ allowed: true }),
-      canToggleBar: (_color: BarColorKey) => ({ allowed: true }),
+      // Numbers are automation-aware - constraints coming in Phase 3
       canToggleNumber: (_num: NumberMarkerKey) => ({ allowed: true }),
+      // Bars are manual-only helpers - no constraints needed
+      canToggleBar: (_color: BarColorKey) => ({ allowed: true }),
     }),
     []
   );
 
-  // Lock button handler - validates before showing confirmation
+  // Lock button handler
   function handleLockClick() {
     if (publicSelected.length !== publicCount) {
       setInfoDialogMessage(
@@ -89,7 +100,6 @@ export function Sheet(props: Props) {
 
   // After user confirms locking
   function handleLockConfirmed() {
-    // Mark all cells in public card rows as NOT (preserving any existing numbers)
     const updates: Array<{ cardId: CardId; playerId: number; mark: ReturnType<typeof createMark> }> = [];
 
     publicSelected.forEach((cardId) => {
@@ -133,14 +143,16 @@ export function Sheet(props: Props) {
     handleCloseMarkerBar();
   }
 
-  function handleToggleBar(color: BarColorKey) {
-    if (!selectedCell) return;
-    toggleBarColor(selectedCell.cardId, selectedCell.playerId, color);
-  }
-
   function handleToggleNumber(num: NumberMarkerKey) {
     if (!selectedCell) return;
     toggleNumber(selectedCell.cardId, selectedCell.playerId, num);
+    // Don't close - allow toggling multiple numbers
+  }
+
+  function handleToggleBar(color: BarColorKey) {
+    if (!selectedCell) return;
+    toggleBarColor(selectedCell.cardId, selectedCell.playerId, color);
+    // Don't close - allow toggling multiple colors
   }
 
   function handleClearMark() {
@@ -148,7 +160,6 @@ export function Sheet(props: Props) {
     clearMark(selectedCell.cardId, selectedCell.playerId);
   }
 
-  // Build confirmation message with card list
   const confirmMessage = `The following card${publicSelected.length !== 1 ? "s" : ""} will be locked as public:\n\n• ${getSelectedCardNames().join("\n• ")}\n\nAll cells in these rows will be marked as NOT.`;
 
   return (
@@ -183,15 +194,14 @@ export function Sheet(props: Props) {
             validation={createValidation(selectedCell.cardId, selectedCell.playerId)}
             onMarkHas={handleMarkHas}
             onMarkNot={handleMarkNot}
-            onToggleBar={handleToggleBar}
             onToggleNumber={handleToggleNumber}
+            onToggleBar={handleToggleBar}
             onClear={handleClearMark}
             onClose={handleCloseMarkerBar}
           />
         )}
       </div>
 
-      {/* Validation info dialog */}
       <InfoDialog
         isOpen={showInfoDialog}
         title="Cannot Lock"
@@ -199,7 +209,6 @@ export function Sheet(props: Props) {
         onClose={() => setShowInfoDialog(false)}
       />
 
-      {/* Lock confirmation dialog */}
       <ConfirmDialog
         isOpen={showLockConfirmDialog}
         title="Lock Public Cards?"
