@@ -1,8 +1,8 @@
 // src/ui/MarkerBar.tsx
 
 import { useState } from "react";
-import type { CellMark, MaybeColorKey, NumberMarkerKey } from "../domain";
-import { MAYBE_COLOR_KEYS, MAYBE_COLOR_HEX, NUMBER_MARKER_KEYS } from "../domain";
+import type { CellMark, NumberMarkerKey, BarColorKey } from "../domain";
+import { BAR_COLOR_KEYS, BAR_COLOR_HEX, NUMBER_MARKER_KEYS } from "../domain";
 import { HasIcon, NotIcon, MaybeIcon } from "./icons";
 import { InfoDialog } from "./dialogs";
 import styles from "./MarkerBar.module.css";
@@ -15,8 +15,8 @@ export type ValidationResult = {
 export type ValidationFns = {
   canMarkHas: () => ValidationResult;
   canMarkNot: () => ValidationResult;
-  canToggleMaybe: (preset: MaybeColorKey) => ValidationResult;
-  // Numbers have no validation - always allowed (manual-only)
+  canToggleBar: (color: BarColorKey) => ValidationResult;
+  canToggleNumber: (num: NumberMarkerKey) => ValidationResult;
 };
 
 type Props = {
@@ -24,7 +24,7 @@ type Props = {
   validation: ValidationFns;
   onMarkHas: () => void;
   onMarkNot: () => void;
-  onToggleMaybe: (preset: MaybeColorKey) => void;
+  onToggleBar: (color: BarColorKey) => void;
   onToggleNumber: (num: NumberMarkerKey) => void;
   onClear: () => void;
   onClose: () => void;
@@ -36,7 +36,7 @@ export function MarkerBar(props: Props) {
     validation,
     onMarkHas,
     onMarkNot,
-    onToggleMaybe,
+    onToggleBar,
     onToggleNumber,
     onClear,
     onClose,
@@ -47,14 +47,12 @@ export function MarkerBar(props: Props) {
   const hasValidation = validation.canMarkHas();
   const notValidation = validation.canMarkNot();
 
-  const isHasSelected = currentMark.type === "has";
-  const isNotSelected = currentMark.type === "not";
+  const isHasSelected = currentMark.primary === "has";
+  const isNotSelected = currentMark.primary === "not";
 
-  // Get active maybe presets and numbers
-  const activeMaybes =
-    currentMark.type === "maybe" ? currentMark.presets : new Set<MaybeColorKey>();
-  const activeNumbers =
-    currentMark.type === "maybe" ? currentMark.numbers : new Set<NumberMarkerKey>();
+  // Get active bar colors and numbers from current mark
+  const activeBarColors = currentMark.barColors;
+  const activeNumbers = currentMark.numbers;
 
   function handleHasClick() {
     if (!hasValidation.allowed) {
@@ -80,17 +78,21 @@ export function MarkerBar(props: Props) {
     }
   }
 
-  function handleMaybeClick(preset: MaybeColorKey) {
-    const maybeValidation = validation.canToggleMaybe(preset);
-    if (!maybeValidation.allowed) {
-      setInfoMessage(maybeValidation.reason ?? "Cannot toggle color marker");
+  function handleBarClick(color: BarColorKey) {
+    const barValidation = validation.canToggleBar(color);
+    if (!barValidation.allowed) {
+      setInfoMessage(barValidation.reason ?? "Cannot toggle bar marker");
       return;
     }
-    onToggleMaybe(preset);
+    onToggleBar(color);
   }
 
-  // Numbers have no validation - always allowed
   function handleNumberClick(num: NumberMarkerKey) {
+    const numValidation = validation.canToggleNumber(num);
+    if (!numValidation.allowed) {
+      setInfoMessage(numValidation.reason ?? "Cannot toggle number");
+      return;
+    }
     onToggleNumber(num);
   }
 
@@ -125,49 +127,50 @@ export function MarkerBar(props: Props) {
 
         <div className={styles.divider} />
 
-        {/* Maybe color buttons (colored stripes - automation-aware) */}
-        {MAYBE_COLOR_KEYS.map((preset) => {
-          const isActive = activeMaybes.has(preset);
-          const maybeValidation = validation.canToggleMaybe(preset);
-
-          return (
-            <button
-              key={`maybe-${preset}`}
-              type="button"
-              className={`${styles.markerButton} ${isActive ? styles.selected : ""} ${!maybeValidation.allowed ? styles.disabled : ""
-                }`}
-              onClick={() => handleMaybeClick(preset)}
-              aria-label={`Toggle color marker ${preset}`}
-              aria-pressed={isActive}
-              title={`Color ${preset}`}
-            >
-              <MaybeIcon
-                width={16}
-                height={16}
-                style={{ color: MAYBE_COLOR_HEX[preset] }}
-              />
-            </button>
-          );
-        })}
-
-        <div className={styles.divider} />
-
-        {/* Number marker buttons (white text - manual-only) */}
+        {/* Number marker buttons (white text - will be automation-aware) */}
         {NUMBER_MARKER_KEYS.map((num) => {
           const isActive = activeNumbers.has(num);
+          const numValidation = validation.canToggleNumber(num);
 
           return (
             <button
               key={`num-${num}`}
               type="button"
               className={`${styles.markerButton} ${styles.numberButton} ${isActive ? styles.selected : ""
-                }`}
+                } ${!numValidation.allowed ? styles.disabled : ""}`}
               onClick={() => handleNumberClick(num)}
               aria-label={`Toggle number ${num}`}
               aria-pressed={isActive}
               title={`Number ${num}`}
             >
               {num}
+            </button>
+          );
+        })}
+
+        <div className={styles.divider} />
+
+        {/* Bar color buttons (colored stripes - manual helper) */}
+        {BAR_COLOR_KEYS.map((color) => {
+          const isActive = activeBarColors.has(color);
+          const barValidation = validation.canToggleBar(color);
+
+          return (
+            <button
+              key={`bar-${color}`}
+              type="button"
+              className={`${styles.markerButton} ${isActive ? styles.selected : ""} ${!barValidation.allowed ? styles.disabled : ""
+                }`}
+              onClick={() => handleBarClick(color)}
+              aria-label={`Toggle bar color ${color}`}
+              aria-pressed={isActive}
+              title={`Color bar ${color}`}
+            >
+              <MaybeIcon
+                width={16}
+                height={16}
+                style={{ color: BAR_COLOR_HEX[color] }}
+              />
             </button>
           );
         })}

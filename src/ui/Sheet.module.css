@@ -29,43 +29,6 @@
   padding: 4px 0 0 0;
 }
 
-/* Public Bar - informational display */
-.publicBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
-  flex-shrink: 0;
-}
-
-.publicBarContent {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.publicBarTitle {
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.publicBarMeta {
-  font-size: 10px;
-  color: var(--muted);
-}
-
-.publicLockedPill {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 11px;
-  color: var(--muted);
-  background: rgba(59, 130, 246, 0.15);
-}
-
 /* Grid */
 .grid {
   display: grid;
@@ -198,18 +161,18 @@
   position: relative;
 }
 
-/* Maybe cell with vertical stripe coloring */
-.maybeCell {
+/* Bars cell with vertical stripe coloring (renamed from maybeCell) */
+.barsCell {
   background: linear-gradient(
     to right,
-    var(--maybe-1, transparent) 0% 25%,
-    var(--maybe-2, transparent) 25% 50%,
-    var(--maybe-3, transparent) 50% 75%,
-    var(--maybe-4, transparent) 75% 100%
+    var(--bar-1, transparent) 0% 25%,
+    var(--bar-2, transparent) 25% 50%,
+    var(--bar-3, transparent) 50% 75%,
+    var(--bar-4, transparent) 75% 100%
   ) !important;
 }
 
-/* White numbers overlay (manual markers) */
+/* White numbers overlay */
 .numbersOverlay {
   font-size: 10px;
   font-weight: 700;
@@ -217,6 +180,7 @@
   text-shadow: 0 0 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.7);
   letter-spacing: 2px;
   z-index: 1;
+  position: absolute;
 }
 
 .row {

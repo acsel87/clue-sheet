@@ -1,6 +1,6 @@
 // src/ui/SheetGrid.tsx
 
-import { PLAYER_COLORS, MAYBE_COLOR_HEX } from "../domain";
+import { PLAYER_COLORS, BAR_COLOR_HEX } from "../domain";
 import type { CardId, CategoryId, ThemeId, CellMark, NumberMarkerKey } from "../domain";
 import { CATEGORIES, cardsByCategory } from "../domain/themes";
 import { HasIcon, NotIcon } from "./icons";
@@ -204,20 +204,20 @@ function MarkCell(props: {
     onClick,
   } = props;
 
-  // Get maybe stripes style (vertical colored bars)
-  const maybeStripeStyle = getMaybeStripeStyle(mark);
-  const hasMaybeStripes = mark.type === "maybe" && mark.presets.size > 0;
+  // Get bar stripes style (only when primary is "bars")
+  const barStripeStyle = getBarStripeStyle(mark);
+  const hasBars = mark.primary === "bars" && mark.barColors.size > 0;
 
   return (
     <button
       type="button"
-      className={`${styles.cell} ${styles.markCell} ${hasMaybeStripes ? styles.maybeCell : ""
+      className={`${styles.cell} ${styles.markCell} ${hasBars ? styles.barsCell : ""
         } ${isSelected ? styles.cellSelected : ""} ${isDisabled ? styles.cellDisabled : ""
         } ${isLocked ? styles.cellLocked : ""}`}
       style={{
-        backgroundColor: hasMaybeStripes ? undefined : categoryColor,
+        backgroundColor: hasBars ? undefined : categoryColor,
         borderColor: PLAYER_COLORS[playerId - 1],
-        ...maybeStripeStyle,
+        ...barStripeStyle,
       }}
       onClick={onClick}
       disabled={isDisabled}
@@ -229,25 +229,25 @@ function MarkCell(props: {
   );
 }
 
+/** Render cell content based on primary mark + numbers overlay */
 function CellContent({ mark }: { mark: CellMark }) {
-  switch (mark.type) {
-    case "has":
-      return <HasIcon width={16} height={16} />;
-    case "not":
-      return <NotIcon width={16} height={16} />;
-    case "maybe":
-      // Render white numbers if any are selected
-      return <NumbersOverlay numbers={mark.numbers} />;
-    case "empty":
-    default:
-      return null;
-  }
+  const hasNums = mark.numbers.size > 0;
+
+  return (
+    <>
+      {/* Primary mark icon */}
+      {mark.primary === "has" && <HasIcon width={16} height={16} />}
+      {mark.primary === "not" && <NotIcon width={16} height={16} />}
+      {/* "bars" and "empty" have no icon, just background/nothing */}
+
+      {/* Numbers overlay - can appear on ANY primary type */}
+      {hasNums && <NumbersOverlay numbers={mark.numbers} />}
+    </>
+  );
 }
 
-// Renders white number markers as text overlay
+/** Renders white number markers as text overlay */
 function NumbersOverlay({ numbers }: { numbers: ReadonlySet<NumberMarkerKey> }) {
-  if (numbers.size === 0) return null;
-
   const sortedNumbers = Array.from(numbers).sort((a, b) => a - b);
 
   return (
@@ -257,15 +257,15 @@ function NumbersOverlay({ numbers }: { numbers: ReadonlySet<NumberMarkerKey> }) 
   );
 }
 
-// Generate CSS for vertical colored stripes
-function getMaybeStripeStyle(mark: CellMark): React.CSSProperties | undefined {
-  if (mark.type !== "maybe" || mark.presets.size === 0) return undefined;
+/** Generate CSS for vertical colored bar stripes */
+function getBarStripeStyle(mark: CellMark): React.CSSProperties | undefined {
+  if (mark.primary !== "bars" || mark.barColors.size === 0) return undefined;
 
-  const presets = mark.presets;
+  const colors = mark.barColors;
   return {
-    "--maybe-1": presets.has(1) ? MAYBE_COLOR_HEX[1] : "transparent",
-    "--maybe-2": presets.has(2) ? MAYBE_COLOR_HEX[2] : "transparent",
-    "--maybe-3": presets.has(3) ? MAYBE_COLOR_HEX[3] : "transparent",
-    "--maybe-4": presets.has(4) ? MAYBE_COLOR_HEX[4] : "transparent",
+    "--bar-1": colors.has(1) ? BAR_COLOR_HEX[1] : "transparent",
+    "--bar-2": colors.has(2) ? BAR_COLOR_HEX[2] : "transparent",
+    "--bar-3": colors.has(3) ? BAR_COLOR_HEX[3] : "transparent",
+    "--bar-4": colors.has(4) ? BAR_COLOR_HEX[4] : "transparent",
   } as React.CSSProperties;
 }

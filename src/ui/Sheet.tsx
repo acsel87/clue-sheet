@@ -1,8 +1,8 @@
 // src/ui/Sheet.tsx
 
 import { useState, useCallback } from "react";
-import type { CardId, ThemeId, MaybeColorKey, NumberMarkerKey } from "../domain";
-import { getCards } from "../domain";
+import type { CardId, ThemeId, BarColorKey, NumberMarkerKey } from "../domain";
+import { getCards, createMark } from "../domain";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
 import { SheetGrid } from "./SheetGrid";
@@ -37,8 +37,15 @@ export function Sheet(props: Props) {
     onSettings,
   } = props;
 
-  const { getCellMark, setCellMark, toggleMaybePreset, toggleNumberMarker, clearMark } =
-    useCellMarks();
+  const {
+    getCellMark,
+    setPrimary,
+    toggleNumber,
+    toggleBarColor,
+    clearMark,
+    batchSetMarks,
+  } = useCellMarks();
+
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
 
   // Dialog states
@@ -57,12 +64,13 @@ export function Sheet(props: Props) {
       .filter((name): name is string => name !== undefined);
   }, [themeId, publicSelected]);
 
-  // Placeholder validation - replace with real logic later
+  // Placeholder validation - will be expanded in Phase 3
   const createValidation = useCallback(
     (_cardId: CardId, _playerId: number): ValidationFns => ({
       canMarkHas: () => ({ allowed: true }),
       canMarkNot: () => ({ allowed: true }),
-      canToggleMaybe: (_preset: MaybeColorKey) => ({ allowed: true }),
+      canToggleBar: (_color: BarColorKey) => ({ allowed: true }),
+      canToggleNumber: (_num: NumberMarkerKey) => ({ allowed: true }),
     }),
     []
   );
@@ -81,21 +89,28 @@ export function Sheet(props: Props) {
 
   // After user confirms locking
   function handleLockConfirmed() {
-    // Mark all cells in public card rows as NOT
+    // Mark all cells in public card rows as NOT (preserving any existing numbers)
+    const updates: Array<{ cardId: CardId; playerId: number; mark: ReturnType<typeof createMark> }> = [];
+
     publicSelected.forEach((cardId) => {
       for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
-        setCellMark(cardId, playerId, { type: "not" });
+        const currentMark = getCellMark(cardId, playerId);
+        // Preserve numbers, set primary to "not"
+        updates.push({
+          cardId,
+          playerId,
+          mark: createMark("not", currentMark.numbers),
+        });
       }
     });
 
-    // Call parent's lock handler
+    batchSetMarks(updates);
     onLockPublic();
     setShowLockConfirmDialog(false);
   }
 
   // Cell click handlers
   function handleCellClick(cardId: CardId, playerId: number) {
-    // Don't allow cell selection if grid is disabled or row is locked
     if (isGridDisabled) return;
     if (publicLocked && publicSelected.includes(cardId)) return;
 
@@ -108,24 +123,24 @@ export function Sheet(props: Props) {
 
   function handleMarkHas() {
     if (!selectedCell) return;
-    setCellMark(selectedCell.cardId, selectedCell.playerId, { type: "has" });
+    setPrimary(selectedCell.cardId, selectedCell.playerId, "has");
     handleCloseMarkerBar();
   }
 
   function handleMarkNot() {
     if (!selectedCell) return;
-    setCellMark(selectedCell.cardId, selectedCell.playerId, { type: "not" });
+    setPrimary(selectedCell.cardId, selectedCell.playerId, "not");
     handleCloseMarkerBar();
   }
 
-  function handleToggleMaybe(preset: MaybeColorKey) {
+  function handleToggleBar(color: BarColorKey) {
     if (!selectedCell) return;
-    toggleMaybePreset(selectedCell.cardId, selectedCell.playerId, preset);
+    toggleBarColor(selectedCell.cardId, selectedCell.playerId, color);
   }
 
   function handleToggleNumber(num: NumberMarkerKey) {
     if (!selectedCell) return;
-    toggleNumberMarker(selectedCell.cardId, selectedCell.playerId, num);
+    toggleNumber(selectedCell.cardId, selectedCell.playerId, num);
   }
 
   function handleClearMark() {
@@ -139,8 +154,6 @@ export function Sheet(props: Props) {
   return (
     <div className={styles.sheetContainer}>
       <div className={styles.gridContainer}>
-
-        {/* Grid */}
         <SheetGrid
           themeId={themeId}
           playerCount={PLAYER_COL_COUNT}
@@ -170,7 +183,7 @@ export function Sheet(props: Props) {
             validation={createValidation(selectedCell.cardId, selectedCell.playerId)}
             onMarkHas={handleMarkHas}
             onMarkNot={handleMarkNot}
-            onToggleMaybe={handleToggleMaybe}
+            onToggleBar={handleToggleBar}
             onToggleNumber={handleToggleNumber}
             onClear={handleClearMark}
             onClose={handleCloseMarkerBar}

@@ -3,12 +3,6 @@
 export type { CategoryId, CardId, Card, ThemeId } from "./themes";
 export { CATEGORIES, THEMES, getCards, cardsByCategory } from "./themes";
 
-export {
-  MAYBE_COLOR_KEYS,
-  MAYBE_COLOR_HEX,
-  type MaybeColorKey,
-} from "./maybe-colors";
-
 export type { PlayerId, PlayerConfig, AppConfig } from "./config";
 export {
   MIN_PLAYERS,
@@ -19,10 +13,23 @@ export {
 
 export { AppConfigSchema } from "./configSchema";
 
+// Cell marks - restructured
 export {
   type CellMark,
+  type PrimaryMark,
   type NumberMarkerKey,
+  type BarColorKey,
   NUMBER_MARKER_KEYS,
+  BAR_COLOR_KEYS,
   EMPTY_MARK,
-  createMaybeMark,
+  isEmptyMark,
+  hasNumbers,
+  createMark,
+  withPrimary,
+  withToggledNumber,
+  withToggledBarColor,
+  withoutNumber,
 } from "./cell-marks";
+
+// Bar colors (visual helper markers)
+export { BAR_COLOR_HEX } from "./bar-colors";
