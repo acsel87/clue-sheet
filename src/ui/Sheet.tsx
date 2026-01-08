@@ -44,6 +44,7 @@ export function Sheet(props: Props) {
     toggleBarColor,
     clearMark,
     batchSetMarks,
+    removeNumberFromColumn,
   } = useCellMarks();
 
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
@@ -66,24 +67,46 @@ export function Sheet(props: Props) {
 
   /**
    * Validation factory for marker operations
-   * 
-   * Phase 2: Placeholder validation (all allowed)
-   * Phase 3: Will add real constraints for numbers
-   * 
-   * Semantic distinction:
-   * - Numbers: automation-aware, will have constraints
-   * - Bars: manual-only, typically always allowed
+   *
+   * Phase 3: Implements number constraints
+   * - Numbers can only be ADDED to empty or bars cells
+   * - Numbers can always be REMOVED (but will clear from column)
+   * - HAS/NOT/bars can always be applied (even on numbered cells)
    */
   const createValidation = useCallback(
-    (_cardId: CardId, _playerId: number): ValidationFns => ({
-      canMarkHas: () => ({ allowed: true }),
-      canMarkNot: () => ({ allowed: true }),
-      // Numbers are automation-aware - constraints coming in Phase 3
-      canToggleNumber: (_num: NumberMarkerKey) => ({ allowed: true }),
-      // Bars are manual-only helpers - no constraints needed
-      canToggleBar: (_color: BarColorKey) => ({ allowed: true }),
-    }),
-    []
+    (cardId: CardId, playerId: number): ValidationFns => {
+      const currentMark = getCellMark(cardId, playerId);
+
+      return {
+        // Constraint 3.3: HAS is always allowed (numbers are preserved)
+        canMarkHas: () => ({ allowed: true }),
+
+        // Constraint 3.3: NOT is always allowed (numbers are preserved)
+        canMarkNot: () => ({ allowed: true }),
+
+        // Constraint 3.1-3.2: Numbers only on empty/bars
+        // Constraint 3.4: Removal is always allowed (clears from column)
+        canToggleNumber: (num: NumberMarkerKey) => {
+          const isAdding = !currentMark.numbers.has(num);
+
+          if (isAdding) {
+            // Can only add numbers to empty or bars cells
+            if (currentMark.primary === "has" || currentMark.primary === "not") {
+              return {
+                allowed: false,
+                reason: "Maybe markers can only be added to empty or colored bar cells. Clear this cell first, or mark it with color bars.",
+              };
+            }
+          }
+          // Removing is always allowed (will clear from entire column)
+          return { allowed: true };
+        },
+
+        // Bars are manual-only helpers - no constraints
+        canToggleBar: (_color: BarColorKey) => ({ allowed: true }),
+      };
+    },
+    [getCellMark]
   );
 
   // Lock button handler
@@ -143,9 +166,26 @@ export function Sheet(props: Props) {
     handleCloseMarkerBar();
   }
 
+  /**
+   * Toggle number marker with column-aware removal
+   *
+   * Phase 3 behavior:
+   * - Adding: Only allowed on empty/bars cells (validation handles this)
+   * - Removing: Removes the number from ALL cells in the player's column
+   */
   function handleToggleNumber(num: NumberMarkerKey) {
     if (!selectedCell) return;
-    toggleNumber(selectedCell.cardId, selectedCell.playerId, num);
+
+    const currentMark = getCellMark(selectedCell.cardId, selectedCell.playerId);
+    const isRemoving = currentMark.numbers.has(num);
+
+    if (isRemoving) {
+      // Constraint 3.4: Remove from entire column
+      removeNumberFromColumn(selectedCell.playerId, num);
+    } else {
+      // Add to this cell only (validation already passed)
+      toggleNumber(selectedCell.cardId, selectedCell.playerId, num);
+    }
     // Don't close - allow toggling multiple numbers
   }
 
