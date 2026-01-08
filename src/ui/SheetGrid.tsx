@@ -141,9 +141,18 @@ function CategoryBlock(props: {
         const isPublicSelected = selectedSet.has(card.id);
         const isRowLocked = lockedRowSet.has(card.id);
 
-        // Phase 4: Check if P1 owns this card (has HAS mark in column 1)
+        // Check P1's mark for this card
         const p1Mark = getCellMark(card.id, 1);
         const isOwned = p1Mark.primary === "has";
+
+        // Check if ALL cells in row are NOT (murder item detection)
+        // Murder items: all cells are NOT, but NOT a public card
+        const isMurderItem = !isRowLocked && cols.every((playerId) => {
+          const mark = getCellMark(card.id, playerId);
+          return mark.primary === "not";
+        });
+
+        // Shown-to state for owned cards
         const shownTo = getShownTo(card.id);
         const hasShownToAny = shownTo.size > 0;
         const isSelectedForShownTo = selectedOwnedCard === card.id;
@@ -159,6 +168,34 @@ function CategoryBlock(props: {
 
         const isCardClickable = canSelectPublic || (isOwned && !isRowLocked);
 
+        // Build card cell class list
+        const cardCellClasses = [
+          styles.cell,
+          styles.cardCell,
+          canSelectPublic && styles.selectable,
+          isPublicSelected && styles.selected,
+          needsPublicLock && !publicLocked && styles.attention,
+          isRowLocked && styles.cardLocked,
+          // Owner's card - transparent background with conic gradient
+          isOwned && !canSelectPublic && !isRowLocked && styles.cardOwned,
+          isOwned && hasShownToAny && styles.cardOwnedWithShownTo,
+          isSelectedForShownTo && styles.cardSelectedForShownTo,
+          // Murder item - red border
+          isMurderItem && styles.cardMurderItem,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        // Card cell style
+        // Owner cards: no background color (gradient handles it)
+        // Murder items & others: keep category color
+        const cardCellStyle: React.CSSProperties = {
+          // Only apply category color if NOT an owner card
+          ...(!isOwned ? !isRowLocked ? { backgroundColor: color } : { backgroundColor: "white", color: "black" } : {}),
+          // Apply shown-to gradient variables for owner cards
+          ...(isOwned && hasShownToAny ? getShownToStyle(shownTo) : {}),
+        };
+
         return (
           <div
             key={card.id}
@@ -168,17 +205,8 @@ function CategoryBlock(props: {
             {/* Card name cell */}
             <button
               type="button"
-              className={`${styles.cell} ${styles.cardCell} 
-                ${canSelectPublic ? styles.selectable : ""} 
-                ${isPublicSelected ? styles.selected : ""} 
-                ${needsPublicLock && !publicLocked ? styles.attention : ""} 
-                ${isRowLocked ? styles.cardLocked : ""}
-                ${isOwned && !canSelectPublic ? styles.cardOwned : ""}
-                ${isSelectedForShownTo ? styles.cardSelectedForShownTo : ""}`}
-              style={{
-                backgroundColor: color,
-                ...getShownToStyle(shownTo),
-              }}
+              className={cardCellClasses}
+              style={cardCellStyle}
               onClick={handleCardCellClick}
               disabled={!isCardClickable}
               aria-disabled={!isCardClickable}
@@ -189,13 +217,13 @@ function CategoryBlock(props: {
                     ? "Select/deselect as public"
                     : isOwned
                       ? "Click to track shown players"
-                      : undefined
+                      : isMurderItem
+                        ? "Potential murder item"
+                        : undefined
               }
             >
               <span
-                className={`${styles.cardName} 
-                  ${isRowLocked ? styles.cardNameStrikethrough : ""}
-                  ${hasShownToAny ? styles.cardNameWithShownTo : ""}`}
+                className={styles.cardName}
               >
                 {card.name}
               </span>
@@ -260,8 +288,8 @@ function MarkCell(props: {
         } ${isSelected ? styles.cellSelected : ""} ${isDisabled ? styles.cellDisabled : ""
         } ${isLocked ? styles.cellLocked : ""}`}
       style={{
-        backgroundColor: hasBars ? undefined : categoryColor,
-        borderColor: PLAYER_COLORS[playerId - 1],
+        backgroundColor: (hasBars || playerId === 1) ? undefined : isLocked ? "white" : categoryColor,
+        borderColor: playerId === 1 ? undefined : PLAYER_COLORS[playerId - 1],
         ...barStripeStyle,
       }}
       onClick={onClick}
@@ -316,7 +344,7 @@ function getBarStripeStyle(mark: CellMark): React.CSSProperties | undefined {
 }
 
 /**
- * Generate CSS custom properties for shown-to conic gradient
+ * Generate CSS custom properties for conic gradient from center
  * Each player (P2-P6) gets a 72° segment
  */
 function getShownToStyle(

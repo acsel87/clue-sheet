@@ -8,7 +8,7 @@ export const MAX_PLAYERS = 6 as const;
 export type PlayerId = 1 | 2 | 3 | 4 | 5 | 6;
 
 export const PLAYER_COLORS: ReadonlyArray<string> = [
-  "#e6194b", // red
+  "#111827f2", // background - this is ignored anyway
   "#ffffffff", // white
   "#0082c8", // blue
   "#f58231", // orange

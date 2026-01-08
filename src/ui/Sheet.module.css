@@ -88,13 +88,6 @@
   flex: 1;
 }
 
-/* Strikethrough for locked public card names */
-.cardNameStrikethrough {
-  text-decoration: line-through;
-  text-decoration-color: #3b82f6;
-  text-decoration-thickness: 2px;
-}
-
 .markCell {
   font-size: 14px;
   background: rgba(255, 255, 255, 0.02);
@@ -129,30 +122,10 @@
   background: inherit;
 }
 
-/* Locked cell state (public card row after locking) */
-.cellLocked {
-  opacity: 0.6;
-  cursor: not-allowed;
-  position: relative;
-}
-
-/* Blue strikethrough overlay for locked cells */
-.cellLocked::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 2px;
-  right: 2px;
-  height: 2px;
-  background: #3b82f6;
-  transform: translateY(-50%);
-  pointer-events: none;
-  border-radius: 1px;
-}
-
-/* Locked card name cell */
+/* Locked cell state (public card row after locking) and owner cell rows */
+.cellLocked,
 .cardLocked {
-  opacity: 0.7;
+  opacity: 0.8;
   cursor: not-allowed;
 }
 
@@ -161,7 +134,7 @@
   position: relative;
 }
 
-/* Bars cell with vertical stripe coloring (renamed from maybeCell) */
+/* Bars cell with vertical stripe coloring */
 .barsCell {
   background: linear-gradient(
     to right,
@@ -205,17 +178,23 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
+/* ============================================
+   PHASE 4: Card Ownership Visual Treatments
+   ============================================ */
+
 /**
- * Card name cell for owned cards (P1 has HAS mark)
- * Makes the card name clickable to show player selection
+ * Owner's card - P1 has HAS mark
+ * Remove background, make clickable for shown-to tracking
  */
 .cardOwned {
   cursor: pointer;
-  position: relative;
+  /* Remove category background - will show conic gradient instead */
+  background: transparent !important;
 }
 
 .cardOwned:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+  /* Subtle hover effect without solid background */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 .cardOwned:focus-visible {
@@ -224,44 +203,56 @@
 }
 
 /**
- * Card name with shown-to players indicator
- * Uses conic gradient with 5 segments (72° each for P2-P6)
+ * Vertical gradient bars
+ * Shows which players (P2-P6) have been shown this card
+ * 5 segments, one per other player
  *
- * CSS variables set by JavaScript:
+ * CSS custom properties set by JS:
  * --shown-p2 through --shown-p6: player color or transparent
  */
-.cardNameWithShownTo {
-  position: relative;
-  padding-left: 14px; /* Make room for indicator */
-}
-
-.cardNameWithShownTo::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 2px;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    var(--shown-p2, transparent) 0deg 72deg,
-    var(--shown-p3, transparent) 72deg 144deg,
-    var(--shown-p4, transparent) 144deg 216deg,
-    var(--shown-p5, transparent) 216deg 288deg,
-    var(--shown-p6, transparent) 288deg 360deg
-  );
-  /* Add a subtle border to make the indicator visible */
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+.cardOwnedWithShownTo {
+  background: linear-gradient(
+    to right,
+    var(--shown-p2, transparent) 0% 20%,
+    var(--shown-p3, transparent) 20% 40%,
+    var(--shown-p4, transparent) 40% 60%,
+    var(--shown-p5, transparent) 60% 80%,
+    var(--shown-p6, transparent) 80% 100%
+  ) !important;
 }
 
 /**
- * Selected card for player selection
- * Highlighted border when in player selection mode
+ * Selected card for player selection mode
  */
 .cardSelectedForShownTo {
   outline: 2px solid rgba(255, 255, 255, 0.6);
   outline-offset: -2px;
   z-index: 2;
+}
+
+/* ============================================
+   MURDER ITEM DETECTION
+   ============================================ */
+
+/**
+ * Murder item card - all cells in row are NOT
+ * Red circular/pill border around card name
+ * Auto-detected, not manually set
+ */
+.cardMurderItem {
+  position: relative;
+  border: 2px solid #ef4444 !important;
+  border-radius: 12px;
+  /* Keep category background for murder items */
+}
+
+/* Optional: Add subtle red glow for emphasis */
+.cardMurderItem::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  pointer-events: none;
 }
