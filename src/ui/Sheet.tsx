@@ -2,12 +2,14 @@
 
 import { useState, useCallback } from "react";
 import type { CardId, ThemeId, BarColorKey, NumberMarkerKey } from "../domain";
+import type { OtherPlayerId } from "../domain/card-ownership";
 import { getCards, createMark } from "../domain";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
+import { PlayerSelectBar } from "./PlayerSelectBar";
 import { SheetGrid } from "./SheetGrid";
 import { InfoDialog, ConfirmDialog } from "./dialogs";
-import { useCellMarks } from "./hooks";
+import { useCellMarks, useCardOwnership } from "./hooks";
 import styles from "./Sheet.module.css";
 
 const PLAYER_COL_COUNT = 6;
@@ -47,7 +49,13 @@ export function Sheet(props: Props) {
     removeNumberFromColumn,
   } = useCellMarks();
 
+  // Phase 4: Card ownership tracking
+  const { getShownTo, toggleShownTo } = useCardOwnership();
+
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
+
+  // Phase 4: Selected owned card for player selection
+  const [selectedOwnedCard, setSelectedOwnedCard] = useState<CardId | null>(null);
 
   // Dialog states
   const [showInfoDialog, setShowInfoDialog] = useState(false);
@@ -64,6 +72,15 @@ export function Sheet(props: Props) {
       .map((id) => cards.find((c) => c.id === id)?.name)
       .filter((name): name is string => name !== undefined);
   }, [themeId, publicSelected]);
+
+  // Get card name for player select bar
+  const getCardName = useCallback(
+    (cardId: CardId): string => {
+      const cards = getCards(themeId);
+      return cards.find((c) => c.id === cardId)?.name ?? "Unknown";
+    },
+    [themeId]
+  );
 
   /**
    * Validation factory for marker operations
@@ -94,7 +111,8 @@ export function Sheet(props: Props) {
             if (currentMark.primary === "has" || currentMark.primary === "not") {
               return {
                 allowed: false,
-                reason: "Maybe markers can only be added to empty or colored bar cells. Clear this cell first, or mark it with color bars.",
+                reason:
+                  "Maybe markers can only be added to empty or colored bar cells. Clear this cell first, or mark it with color bars.",
               };
             }
           }
@@ -103,7 +121,7 @@ export function Sheet(props: Props) {
         },
 
         // Bars are manual-only helpers - no constraints
-        canToggleBar: (_color: BarColorKey) => ({ allowed: true }),
+        canToggleBar: () => ({ allowed: true }),
       };
     },
     [getCellMark]
@@ -123,7 +141,11 @@ export function Sheet(props: Props) {
 
   // After user confirms locking
   function handleLockConfirmed() {
-    const updates: Array<{ cardId: CardId; playerId: number; mark: ReturnType<typeof createMark> }> = [];
+    const updates: Array<{
+      cardId: CardId;
+      playerId: number;
+      mark: ReturnType<typeof createMark>;
+    }> = [];
 
     publicSelected.forEach((cardId) => {
       for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
@@ -147,6 +169,8 @@ export function Sheet(props: Props) {
     if (isGridDisabled) return;
     if (publicLocked && publicSelected.includes(cardId)) return;
 
+    // Close player select bar if open
+    setSelectedOwnedCard(null);
     setSelectedCell({ cardId, playerId });
   }
 
@@ -200,6 +224,23 @@ export function Sheet(props: Props) {
     clearMark(selectedCell.cardId, selectedCell.playerId);
   }
 
+  // Phase 4: Owned card click handler
+  function handleOwnedCardClick(cardId: CardId) {
+    // Close marker bar if open
+    setSelectedCell(null);
+    // Toggle owned card selection
+    setSelectedOwnedCard((prev) => (prev === cardId ? null : cardId));
+  }
+
+  function handleToggleShownToPlayer(playerId: OtherPlayerId) {
+    if (!selectedOwnedCard) return;
+    toggleShownTo(selectedOwnedCard, playerId);
+  }
+
+  function handleClosePlayerSelectBar() {
+    setSelectedOwnedCard(null);
+  }
+
   const confirmMessage = `The following card${publicSelected.length !== 1 ? "s" : ""} will be locked as public:\n\n• ${getSelectedCardNames().join("\n• ")}\n\nAll cells in these rows will be marked as NOT.`;
 
   return (
@@ -216,6 +257,10 @@ export function Sheet(props: Props) {
           isGridDisabled={isGridDisabled}
           onTogglePublicCard={onTogglePublicCard}
           onCellClick={handleCellClick}
+          // Phase 4 props
+          selectedOwnedCard={selectedOwnedCard}
+          getShownTo={getShownTo}
+          onOwnedCardClick={handleOwnedCardClick}
         />
       </div>
 
@@ -228,6 +273,17 @@ export function Sheet(props: Props) {
           onLock={handleLockClick}
         />
 
+        {/* Phase 4: Player select bar (for owned cards) */}
+        {selectedOwnedCard && (
+          <PlayerSelectBar
+            cardName={getCardName(selectedOwnedCard)}
+            selectedPlayers={getShownTo(selectedOwnedCard)}
+            onTogglePlayer={handleToggleShownToPlayer}
+            onClose={handleClosePlayerSelectBar}
+          />
+        )}
+
+        {/* Marker bar (for cell marking) */}
         {selectedCell && (
           <MarkerBar
             currentMark={getCellMark(selectedCell.cardId, selectedCell.playerId)}

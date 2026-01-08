@@ -42,3 +42,16 @@ export {
 
 // Bar colors (visual helper markers)
 export { BAR_COLOR_HEX } from "./bar-colors";
+
+// Card ownership & shown-to tracking (Phase 4)
+export {
+  type OtherPlayerId,
+  type CardShownState,
+  type ShownToState,
+  OTHER_PLAYER_IDS,
+  hasBeenShown,
+  isShownToPlayer,
+  toggleShownTo,
+  clearShownTo,
+  getShownToPlayers,
+} from "./card-ownership";

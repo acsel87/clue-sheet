@@ -2,6 +2,7 @@
 
 import { PLAYER_COLORS, BAR_COLOR_HEX } from "../domain";
 import type { CardId, CategoryId, ThemeId, CellMark, NumberMarkerKey } from "../domain";
+import type { OtherPlayerId } from "../domain/card-ownership";
 import { CATEGORIES, cardsByCategory } from "../domain/themes";
 import { HasIcon, NotIcon } from "./icons";
 import styles from "./Sheet.module.css";
@@ -19,6 +20,10 @@ type Props = {
   isGridDisabled: boolean;
   onTogglePublicCard: (cardId: CardId) => void;
   onCellClick: (cardId: CardId, playerId: number) => void;
+  // Phase 4: Card ownership props
+  selectedOwnedCard: CardId | null;
+  getShownTo: (cardId: CardId) => ReadonlySet<OtherPlayerId>;
+  onOwnedCardClick: (cardId: CardId) => void;
 };
 
 export function SheetGrid(props: Props) {
@@ -33,6 +38,9 @@ export function SheetGrid(props: Props) {
     isGridDisabled,
     onTogglePublicCard,
     onCellClick,
+    selectedOwnedCard,
+    getShownTo,
+    onOwnedCardClick,
   } = props;
 
   const cols = Array.from({ length: playerCount }, (_, i) => i + 1);
@@ -76,6 +84,9 @@ export function SheetGrid(props: Props) {
           isGridDisabled={isGridDisabled}
           onTogglePublicCard={onTogglePublicCard}
           onCellClick={onCellClick}
+          selectedOwnedCard={selectedOwnedCard}
+          getShownTo={getShownTo}
+          onOwnedCardClick={onOwnedCardClick}
         />
       ))}
     </div>
@@ -98,6 +109,9 @@ function CategoryBlock(props: {
   isGridDisabled: boolean;
   onTogglePublicCard: (cardId: CardId) => void;
   onCellClick: (cardId: CardId, playerId: number) => void;
+  selectedOwnedCard: CardId | null;
+  getShownTo: (cardId: CardId) => ReadonlySet<OtherPlayerId>;
+  onOwnedCardClick: (cardId: CardId) => void;
 }) {
   const {
     themeId,
@@ -113,6 +127,9 @@ function CategoryBlock(props: {
     isGridDisabled,
     onTogglePublicCard,
     onCellClick,
+    selectedOwnedCard,
+    getShownTo,
+    onOwnedCardClick,
   } = props;
 
   const needsPublicLock = publicCount > 0;
@@ -124,6 +141,24 @@ function CategoryBlock(props: {
         const isPublicSelected = selectedSet.has(card.id);
         const isRowLocked = lockedRowSet.has(card.id);
 
+        // Phase 4: Check if P1 owns this card (has HAS mark in column 1)
+        const p1Mark = getCellMark(card.id, 1);
+        const isOwned = p1Mark.primary === "has";
+        const shownTo = getShownTo(card.id);
+        const hasShownToAny = shownTo.size > 0;
+        const isSelectedForShownTo = selectedOwnedCard === card.id;
+
+        // Determine card cell click behavior
+        const handleCardCellClick = () => {
+          if (canSelectPublic) {
+            onTogglePublicCard(card.id);
+          } else if (isOwned && !isRowLocked) {
+            onOwnedCardClick(card.id);
+          }
+        };
+
+        const isCardClickable = canSelectPublic || (isOwned && !isRowLocked);
+
         return (
           <div
             key={card.id}
@@ -133,24 +168,34 @@ function CategoryBlock(props: {
             {/* Card name cell */}
             <button
               type="button"
-              className={`${styles.cell} ${styles.cardCell} ${canSelectPublic ? styles.selectable : ""
-                } ${isPublicSelected ? styles.selected : ""} ${needsPublicLock && !publicLocked ? styles.attention : ""
-                } ${isRowLocked ? styles.cardLocked : ""}`}
-              style={{ backgroundColor: color }}
-              onClick={() => canSelectPublic && onTogglePublicCard(card.id)}
-              disabled={!canSelectPublic}
-              aria-disabled={!canSelectPublic}
+              className={`${styles.cell} ${styles.cardCell} 
+                ${canSelectPublic ? styles.selectable : ""} 
+                ${isPublicSelected ? styles.selected : ""} 
+                ${needsPublicLock && !publicLocked ? styles.attention : ""} 
+                ${isRowLocked ? styles.cardLocked : ""}
+                ${isOwned && !canSelectPublic ? styles.cardOwned : ""}
+                ${isSelectedForShownTo ? styles.cardSelectedForShownTo : ""}`}
+              style={{
+                backgroundColor: color,
+                ...getShownToStyle(shownTo),
+              }}
+              onClick={handleCardCellClick}
+              disabled={!isCardClickable}
+              aria-disabled={!isCardClickable}
               title={
                 isRowLocked
                   ? "Public card (locked)"
                   : canSelectPublic
                     ? "Select/deselect as public"
-                    : undefined
+                    : isOwned
+                      ? "Click to track shown players"
+                      : undefined
               }
             >
               <span
-                className={`${styles.cardName} ${isRowLocked ? styles.cardNameStrikethrough : ""
-                  }`}
+                className={`${styles.cardName} 
+                  ${isRowLocked ? styles.cardNameStrikethrough : ""}
+                  ${hasShownToAny ? styles.cardNameWithShownTo : ""}`}
               >
                 {card.name}
               </span>
@@ -267,5 +312,23 @@ function getBarStripeStyle(mark: CellMark): React.CSSProperties | undefined {
     "--bar-2": colors.has(2) ? BAR_COLOR_HEX[2] : "transparent",
     "--bar-3": colors.has(3) ? BAR_COLOR_HEX[3] : "transparent",
     "--bar-4": colors.has(4) ? BAR_COLOR_HEX[4] : "transparent",
+  } as React.CSSProperties;
+}
+
+/**
+ * Generate CSS custom properties for shown-to conic gradient
+ * Each player (P2-P6) gets a 72° segment
+ */
+function getShownToStyle(
+  shownTo: ReadonlySet<OtherPlayerId>
+): React.CSSProperties {
+  if (shownTo.size === 0) return {};
+
+  return {
+    "--shown-p2": shownTo.has(2) ? PLAYER_COLORS[1] : "transparent",
+    "--shown-p3": shownTo.has(3) ? PLAYER_COLORS[2] : "transparent",
+    "--shown-p4": shownTo.has(4) ? PLAYER_COLORS[3] : "transparent",
+    "--shown-p5": shownTo.has(5) ? PLAYER_COLORS[4] : "transparent",
+    "--shown-p6": shownTo.has(6) ? PLAYER_COLORS[5] : "transparent",
   } as React.CSSProperties;
 }
