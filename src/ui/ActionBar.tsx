@@ -5,11 +5,11 @@ import styles from "./ActionBar.module.css";
 type Props = {
   onUndo: () => void;
   onSettings: () => void;
-  showLockButton?: boolean;
-  onLock?: () => void;
+  showConfirmButton?: boolean;
+  onConfirm?: () => void;
 };
 
-export function ActionBar({ onUndo, onSettings, showLockButton, onLock }: Props) {
+export function ActionBar({ onUndo, onSettings, showConfirmButton, onConfirm }: Props) {
   return (
     <div className={styles.actionBar}>
       <button
@@ -32,15 +32,15 @@ export function ActionBar({ onUndo, onSettings, showLockButton, onLock }: Props)
         ⚙︎
       </button>
 
-      {showLockButton && onLock && (
+      {showConfirmButton && onConfirm && (
         <button
           type="button"
           className={`button primary ${styles.actionButton}`}
-          onClick={onLock}
-          aria-label="Lock public cards"
-          title="Lock public cards"
+          onClick={onConfirm}
+          aria-label="Confirm selection"
+          title="Confirm"
         >
-          🔒
+          ✓
         </button>
       )}
     </div>

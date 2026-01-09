@@ -3,7 +3,9 @@
 import { useState, useCallback } from "react";
 import type { CardId, ThemeId, BarColorKey, NumberMarkerKey } from "../domain";
 import type { OtherPlayerId } from "../domain/card-ownership";
+import type { SetupPhase } from "../infra/gameSetup";
 import { getCards, createMark } from "../domain";
+import { getPhaseInfo, validateSelection } from "../infra/gameSetup";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
 import { PlayerSelectBar } from "./PlayerSelectBar";
@@ -19,10 +21,20 @@ type SelectedCell = { cardId: CardId; playerId: number } | null;
 type Props = {
   themeId: ThemeId;
   publicCount: number;
-  publicLocked: boolean;
-  publicSelected: ReadonlyArray<CardId>;
-  onTogglePublicCard: (cardId: CardId) => void;
-  onLockPublic: () => void;
+  handSize: number;
+  setupPhase: SetupPhase;
+  publicCards: ReadonlyArray<CardId>;
+  ownerCards: ReadonlyArray<CardId>;
+  currentSelection: ReadonlyArray<CardId>;
+  onToggleCardSelection: (cardId: CardId) => void;
+  onConfirmPhase: (
+    phase: SetupPhase,
+    selectedCards: ReadonlyArray<CardId>
+  ) => {
+    nextPhase: SetupPhase;
+    confirmedCards: ReadonlyArray<CardId>;
+    cardType: "public" | "owner";
+  } | null;
   onUndo: () => void;
   onSettings: () => void;
 };
@@ -31,10 +43,13 @@ export function Sheet(props: Props) {
   const {
     themeId,
     publicCount,
-    publicLocked,
-    publicSelected,
-    onTogglePublicCard,
-    onLockPublic,
+    handSize,
+    setupPhase,
+    publicCards,
+    ownerCards,
+    currentSelection,
+    onToggleCardSelection,
+    onConfirmPhase,
     onUndo,
     onSettings,
   } = props;
@@ -49,127 +64,148 @@ export function Sheet(props: Props) {
     removeNumberFromColumn,
   } = useCellMarks();
 
-  // Phase 4: Card ownership tracking
   const { getShownTo, toggleShownTo } = useCardOwnership();
 
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
-
-  // Phase 4: Selected owned card for player selection
   const [selectedOwnedCard, setSelectedOwnedCard] = useState<CardId | null>(null);
 
   // Dialog states
-  const [showInfoDialog, setShowInfoDialog] = useState(false);
-  const [infoDialogMessage, setInfoDialogMessage] = useState("");
-  const [showLockConfirmDialog, setShowLockConfirmDialog] = useState(false);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [validationMessage, setValidationMessage] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const needsPublicLock = publicCount > 0;
-  const isGridDisabled = needsPublicLock && !publicLocked;
+  // Phase info
+  const phaseInfo = getPhaseInfo(setupPhase, publicCount, handSize);
+  const isInSetup = setupPhase !== "playing";
+  const isGridDisabled = isInSetup;
 
-  // Get selected card names for confirmation dialog
-  const getSelectedCardNames = useCallback((): string[] => {
-    const cards = getCards(themeId);
-    return publicSelected
-      .map((id) => cards.find((c) => c.id === id)?.name)
-      .filter((name): name is string => name !== undefined);
-  }, [themeId, publicSelected]);
-
-  // Get card name for player select bar
-  const getCardName = useCallback(
-    (cardId: CardId): string => {
+  // Get card names for dialogs
+  const getCardNames = useCallback(
+    (cardIds: ReadonlyArray<CardId>): string[] => {
       const cards = getCards(themeId);
-      return cards.find((c) => c.id === cardId)?.name ?? "Unknown";
+      return cardIds
+        .map((id) => cards.find((c) => c.id === id)?.name)
+        .filter((name): name is string => name !== undefined);
     },
     [themeId]
   );
 
   /**
-   * Validation factory for marker operations
-   *
-   * Phase 3: Implements number constraints
-   * - Numbers can only be ADDED to empty or bars cells
-   * - Numbers can always be REMOVED (but will clear from column)
-   * - HAS/NOT/bars can always be applied (even on numbered cells)
+   * Apply cell marks for confirmed cards
+   * 
+   * Called directly in the event handler, NOT in useEffect.
+   * This follows React 19 best practices:
+   * - No double render
+   * - Clear data flow (user action → state update)
+   * - Easier to debug and reason about
    */
+  const applyMarksForCards = useCallback(
+    (cards: ReadonlyArray<CardId>, type: "public" | "owner") => {
+      const updates: Array<{
+        cardId: CardId;
+        playerId: number;
+        mark: ReturnType<typeof createMark>;
+      }> = [];
+
+      cards.forEach((cardId) => {
+        for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
+          if (type === "public") {
+            // Public cards: all cells → NOT
+            updates.push({
+              cardId,
+              playerId,
+              mark: createMark("not"),
+            });
+          } else {
+            // Owner cards: P1 → HAS, others → NOT
+            updates.push({
+              cardId,
+              playerId,
+              mark: createMark(playerId === 1 ? "has" : "not"),
+            });
+          }
+        }
+      });
+
+      if (updates.length > 0) {
+        batchSetMarks(updates);
+      }
+    },
+    [batchSetMarks]
+  );
+
+  // Validation for marker operations
   const createValidation = useCallback(
     (cardId: CardId, playerId: number): ValidationFns => {
       const currentMark = getCellMark(cardId, playerId);
 
       return {
-        // Constraint 3.3: HAS is always allowed (numbers are preserved)
         canMarkHas: () => ({ allowed: true }),
-
-        // Constraint 3.3: NOT is always allowed (numbers are preserved)
         canMarkNot: () => ({ allowed: true }),
-
-        // Constraint 3.1-3.2: Numbers only on empty/bars
-        // Constraint 3.4: Removal is always allowed (clears from column)
         canToggleNumber: (num: NumberMarkerKey) => {
           const isAdding = !currentMark.numbers.has(num);
-
           if (isAdding) {
-            // Can only add numbers to empty or bars cells
             if (currentMark.primary === "has" || currentMark.primary === "not") {
               return {
                 allowed: false,
-                reason:
-                  "Maybe markers can only be added to empty or colored bar cells. Clear this cell first, or mark it with color bars.",
+                reason: "Maybe markers can only be added to empty or colored bar cells.",
               };
             }
           }
-          // Removing is always allowed (will clear from entire column)
           return { allowed: true };
         },
-
-        // Bars are manual-only helpers - no constraints
         canToggleBar: () => ({ allowed: true }),
       };
     },
     [getCellMark]
   );
 
-  // Lock button handler
-  function handleLockClick() {
-    if (publicSelected.length !== publicCount) {
-      setInfoDialogMessage(
-        `Please select exactly ${publicCount} public card${publicCount !== 1 ? "s" : ""}.\n\nCurrently selected: ${publicSelected.length}`
-      );
-      setShowInfoDialog(true);
+  // Handle confirm button click
+  function handleConfirmClick() {
+    if (!phaseInfo) return;
+
+    const validation = validateSelection(
+      currentSelection.length,
+      phaseInfo.requiredCount
+    );
+
+    if (!validation.valid) {
+      setValidationMessage(validation.message ?? "Invalid selection");
+      setShowValidationDialog(true);
       return;
     }
-    setShowLockConfirmDialog(true);
+
+    setShowConfirmDialog(true);
   }
 
-  // After user confirms locking
-  function handleLockConfirmed() {
-    const updates: Array<{
-      cardId: CardId;
-      playerId: number;
-      mark: ReturnType<typeof createMark>;
-    }> = [];
+  /**
+   * Handle confirmation - ALL state updates in ONE event handler
+   * 
+   * This is the React 19 recommended pattern:
+   * 1. Confirm phase transition (updates setupState)
+   * 2. Apply cell marks (updates cellMarks)
+   * Both happen synchronously in the same event, single render.
+   */
+  function handleConfirmed() {
+    setShowConfirmDialog(false);
 
-    publicSelected.forEach((cardId) => {
-      for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
-        const currentMark = getCellMark(cardId, playerId);
-        // Preserve numbers, set primary to "not"
-        updates.push({
-          cardId,
-          playerId,
-          mark: createMark("not", currentMark.numbers),
-        });
-      }
-    });
+    // Confirm phase and get result
+    const result = onConfirmPhase(setupPhase, currentSelection);
 
-    batchSetMarks(updates);
-    onLockPublic();
-    setShowLockConfirmDialog(false);
+    // Apply marks in the SAME event handler (not useEffect)
+    if (result) {
+      applyMarksForCards(result.confirmedCards, result.cardType);
+    }
   }
 
-  // Cell click handlers
+  // Cell click handlers (only during playing phase)
   function handleCellClick(cardId: CardId, playerId: number) {
     if (isGridDisabled) return;
-    if (publicLocked && publicSelected.includes(cardId)) return;
 
-    // Close player select bar if open
+    const isPublicCard = publicCards.includes(cardId);
+    const isOwnerCard = ownerCards.includes(cardId);
+    if (isPublicCard || isOwnerCard) return;
+
     setSelectedOwnedCard(null);
     setSelectedCell({ cardId, playerId });
   }
@@ -190,33 +226,20 @@ export function Sheet(props: Props) {
     handleCloseMarkerBar();
   }
 
-  /**
-   * Toggle number marker with column-aware removal
-   *
-   * Phase 3 behavior:
-   * - Adding: Only allowed on empty/bars cells (validation handles this)
-   * - Removing: Removes the number from ALL cells in the player's column
-   */
   function handleToggleNumber(num: NumberMarkerKey) {
     if (!selectedCell) return;
-
     const currentMark = getCellMark(selectedCell.cardId, selectedCell.playerId);
     const isRemoving = currentMark.numbers.has(num);
-
     if (isRemoving) {
-      // Constraint 3.4: Remove from entire column
       removeNumberFromColumn(selectedCell.playerId, num);
     } else {
-      // Add to this cell only (validation already passed)
       toggleNumber(selectedCell.cardId, selectedCell.playerId, num);
     }
-    // Don't close - allow toggling multiple numbers
   }
 
   function handleToggleBar(color: BarColorKey) {
     if (!selectedCell) return;
     toggleBarColor(selectedCell.cardId, selectedCell.playerId, color);
-    // Don't close - allow toggling multiple colors
   }
 
   function handleClearMark() {
@@ -224,11 +247,12 @@ export function Sheet(props: Props) {
     clearMark(selectedCell.cardId, selectedCell.playerId);
   }
 
-  // Phase 4: Owned card click handler
+  // Owner card click (for shown-to tracking)
   function handleOwnedCardClick(cardId: CardId) {
-    // Close marker bar if open
+    if (isInSetup) return;
+    if (!ownerCards.includes(cardId)) return;
+
     setSelectedCell(null);
-    // Toggle owned card selection
     setSelectedOwnedCard((prev) => (prev === cardId ? null : cardId));
   }
 
@@ -237,81 +261,94 @@ export function Sheet(props: Props) {
     toggleShownTo(selectedOwnedCard, playerId);
   }
 
-  function handleClosePlayerSelectBar() {
-    setSelectedOwnedCard(null);
-  }
-
-  const confirmMessage = `The following card${publicSelected.length !== 1 ? "s" : ""} will be locked as public:\n\n• ${getSelectedCardNames().join("\n• ")}\n\nAll cells in these rows will be marked as NOT.`;
+  // Build confirmation message
+  const confirmMessage = phaseInfo
+    ? `${phaseInfo.title}:\n\n• ${getCardNames(currentSelection).join("\n• ")}`
+    : "";
 
   return (
     <div className={styles.sheetContainer}>
-      <div className={styles.gridContainer}>
-        <SheetGrid
-          themeId={themeId}
-          playerCount={PLAYER_COL_COUNT}
-          publicCount={publicCount}
-          publicLocked={publicLocked}
-          publicSelected={publicSelected}
-          selectedCell={selectedCell}
-          getCellMark={getCellMark}
-          isGridDisabled={isGridDisabled}
-          onTogglePublicCard={onTogglePublicCard}
-          onCellClick={handleCellClick}
-          // Phase 4 props
-          selectedOwnedCard={selectedOwnedCard}
-          getShownTo={getShownTo}
-          onOwnedCardClick={handleOwnedCardClick}
-        />
+      {/* Setup instruction banner */}
+      {isInSetup && phaseInfo && (
+        <div className={styles.setupBanner}>
+          <span className={styles.setupTitle}>{phaseInfo.title}</span>
+          <span className={styles.setupInstruction}>{phaseInfo.instruction}</span>
+          <span className={styles.setupCount}>
+            {currentSelection.length} / {phaseInfo.requiredCount} selected
+          </span>
+        </div>
+      )}
+
+      {/* Content area: grid + sidebar */}
+      <div className={styles.contentArea}>
+        <div className={styles.gridContainer}>
+          <SheetGrid
+            themeId={themeId}
+            playerCount={PLAYER_COL_COUNT}
+            setupPhase={setupPhase}
+            publicCards={publicCards}
+            ownerCards={ownerCards}
+            currentSelection={currentSelection}
+            selectedCell={selectedCell}
+            getCellMark={getCellMark}
+            isGridDisabled={isGridDisabled}
+            onToggleCardSelection={onToggleCardSelection}
+            onCellClick={handleCellClick}
+            selectedOwnedCard={selectedOwnedCard}
+            getShownTo={getShownTo}
+            onOwnedCardClick={handleOwnedCardClick}
+          />
+        </div>
+
+        {/* Sidebar */}
+        <div className={styles.sidebar}>
+          <ActionBar
+            onUndo={onUndo}
+            onSettings={onSettings}
+            showConfirmButton={isInSetup}
+            onConfirm={handleConfirmClick}
+          />
+
+          {selectedOwnedCard && (
+            <PlayerSelectBar
+              cardName={getCardNames([selectedOwnedCard])[0] ?? "Unknown"}
+              selectedPlayers={getShownTo(selectedOwnedCard)}
+              onTogglePlayer={handleToggleShownToPlayer}
+              onClose={() => setSelectedOwnedCard(null)}
+            />
+          )}
+
+          {selectedCell && (
+            <MarkerBar
+              currentMark={getCellMark(selectedCell.cardId, selectedCell.playerId)}
+              validation={createValidation(selectedCell.cardId, selectedCell.playerId)}
+              onMarkHas={handleMarkHas}
+              onMarkNot={handleMarkNot}
+              onToggleNumber={handleToggleNumber}
+              onToggleBar={handleToggleBar}
+              onClear={handleClearMark}
+              onClose={handleCloseMarkerBar}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Sidebar */}
-      <div className={styles.sidebar}>
-        <ActionBar
-          onUndo={onUndo}
-          onSettings={onSettings}
-          showLockButton={needsPublicLock && !publicLocked}
-          onLock={handleLockClick}
-        />
-
-        {/* Phase 4: Player select bar (for owned cards) */}
-        {selectedOwnedCard && (
-          <PlayerSelectBar
-            cardName={getCardName(selectedOwnedCard)}
-            selectedPlayers={getShownTo(selectedOwnedCard)}
-            onTogglePlayer={handleToggleShownToPlayer}
-            onClose={handleClosePlayerSelectBar}
-          />
-        )}
-
-        {/* Marker bar (for cell marking) */}
-        {selectedCell && (
-          <MarkerBar
-            currentMark={getCellMark(selectedCell.cardId, selectedCell.playerId)}
-            validation={createValidation(selectedCell.cardId, selectedCell.playerId)}
-            onMarkHas={handleMarkHas}
-            onMarkNot={handleMarkNot}
-            onToggleNumber={handleToggleNumber}
-            onToggleBar={handleToggleBar}
-            onClear={handleClearMark}
-            onClose={handleCloseMarkerBar}
-          />
-        )}
-      </div>
-
+      {/* Validation error dialog */}
       <InfoDialog
-        isOpen={showInfoDialog}
-        title="Cannot Lock"
-        message={infoDialogMessage}
-        onClose={() => setShowInfoDialog(false)}
+        isOpen={showValidationDialog}
+        title="Selection Required"
+        message={validationMessage}
+        onClose={() => setShowValidationDialog(false)}
       />
 
+      {/* Confirmation dialog */}
       <ConfirmDialog
-        isOpen={showLockConfirmDialog}
-        title="Lock Public Cards?"
+        isOpen={showConfirmDialog}
+        title={phaseInfo?.confirmLabel ?? "Confirm"}
         message={confirmMessage}
-        confirmLabel="Lock"
-        onConfirm={handleLockConfirmed}
-        onCancel={() => setShowLockConfirmDialog(false)}
+        confirmLabel="Confirm"
+        onConfirm={handleConfirmed}
+        onCancel={() => setShowConfirmDialog(false)}
       />
     </div>
   );

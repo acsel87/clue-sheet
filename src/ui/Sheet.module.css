@@ -1,13 +1,54 @@
 /* src/ui/Sheet.module.css */
 
-/* Main container - Flexbox layout with grid left, sidebar right */
+/* Main container - Column layout with banner on top, content below */
 .sheetContainer {
   overscroll-behavior: none;
   display: flex;
+  flex-direction: column;
   height: 100%;
   padding: 2px;
   gap: 4px;
   overflow: hidden;
+}
+
+/* Setup instruction banner - fixed at top */
+.setupBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.setupTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #60a5fa;
+}
+
+.setupInstruction {
+  font-size: 11px;
+  color: var(--text);
+  text-align: center;
+}
+
+.setupCount {
+  font-size: 12px;
+  font-weight: 600;
+  color: #93c5fd;
+}
+
+/* Content area - grid and sidebar side by side */
+.contentArea {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  overflow: hidden;
+  min-height: 0; /* Important for flex child to allow shrinking */
 }
 
 /* Grid container - takes remaining space */
@@ -112,7 +153,7 @@
   z-index: 1;
 }
 
-/* Disabled cell state (grid locked waiting for public card selection) */
+/* Disabled cell state (grid locked waiting for setup) */
 .cellDisabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -122,7 +163,7 @@
   background: inherit;
 }
 
-/* Locked cell state (public card row after locking) and owner cell rows */
+/* Locked cell state (public/owner card rows) */
 .cellLocked,
 .cardLocked {
   opacity: 0.8;
@@ -160,7 +201,7 @@
   display: contents;
 }
 
-/* Interactive states for public card selection */
+/* Interactive states for card selection during setup */
 .selectable {
   cursor: pointer;
 }
@@ -170,8 +211,9 @@
 }
 
 .selected {
-  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline: 2px solid rgba(59, 130, 246, 0.6);
   outline-offset: -2px;
+  background: rgba(59, 130, 246, 0.15) !important;
 }
 
 .attention {
@@ -179,21 +221,18 @@
 }
 
 /* ============================================
-   PHASE 4: Card Ownership Visual Treatments
+   CARD OWNERSHIP VISUAL TREATMENTS
    ============================================ */
 
 /**
- * Owner's card - P1 has HAS mark
- * Remove background, make clickable for shown-to tracking
+ * Owner's card - clickable for shown-to tracking
  */
 .cardOwned {
   cursor: pointer;
-  /* Remove category background - will show conic gradient instead */
   background: transparent !important;
 }
 
 .cardOwned:hover {
-  /* Subtle hover effect without solid background */
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
@@ -203,12 +242,8 @@
 }
 
 /**
- * Vertical gradient bars
- * Shows which players (P2-P6) have been shown this card
- * 5 segments, one per other player
- *
- * CSS custom properties set by JS:
- * --shown-p2 through --shown-p6: player color or transparent
+ * Vertical gradient bars for shown-to tracking
+ * 5 segments for P2-P6 (20% each)
  */
 .cardOwnedWithShownTo {
   background: linear-gradient(
@@ -236,17 +271,14 @@
 
 /**
  * Murder item card - all cells in row are NOT
- * Red circular/pill border around card name
- * Auto-detected, not manually set
+ * Red circular border
  */
 .cardMurderItem {
   position: relative;
   border: 2px solid #ef4444 !important;
   border-radius: 12px;
-  /* Keep category background for murder items */
 }
 
-/* Optional: Add subtle red glow for emphasis */
 .cardMurderItem::before {
   content: "";
   position: absolute;

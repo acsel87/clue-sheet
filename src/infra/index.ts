@@ -13,3 +13,18 @@ export {
   DEFAULT_GRID_PUBLIC,
   GridPublicSchema,
 } from "./gridPublic";
+
+export {
+  type SetupPhase,
+  type GameSetupState,
+  type PhaseInfo,
+  GameSetupSchema,
+  getInitialPhase,
+  createInitialSetup,
+  needsSetup,
+  loadGameSetup,
+  saveGameSetup,
+  clearGameSetup,
+  getPhaseInfo,
+  validateSelection,
+} from "./gameSetup";
