@@ -1,14 +1,16 @@
 // src/ui/SettingsModal.tsx
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   MAX_PLAYERS,
-  MIN_PLAYERS,
   PLAYER_COLORS,
   type AppConfig,
   type PlayerId,
   type AutoRuleId,
-} from "../domain/config";
+  createDefaultPlayer,
+  deriveGameParams,
+  getCards,
+} from "../domain";
 import { THEMES } from "../domain/themes";
 import { saveConfig } from "../infra/configStorage";
 import { ConfirmDialog, InfoDialog } from "./dialogs";
@@ -21,6 +23,9 @@ type Props = {
   onSaved: (next: AppConfig) => void;
   onResetGridRequested: () => void;
 };
+
+// All possible player IDs
+const ALL_PLAYER_IDS: PlayerId[] = [1, 2, 3, 4, 5, 6];
 
 // --- Auto Rules Metadata ---
 type AutoRuleMeta = {
@@ -56,70 +61,31 @@ const AUTO_RULES_META: AutoRuleMeta[] = [
   },
 ];
 
-function defaultPlayerName(id: PlayerId): string {
-  return id === 1 ? "You" : `P${id}`;
-}
-
-function nextAvailablePlayerId(
-  players: ReadonlyArray<{ id: PlayerId }>
-): PlayerId | null {
-  for (let i = 1 as PlayerId; i <= 6; i = (i + 1) as PlayerId) {
-    if (!players.some((p) => p.id === i)) return i;
-  }
-  return null;
-}
-
-// --- Stepper Input Component ---
-type StepperProps = {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (value: number) => void;
-};
-
-function StepperInput({ label, value, min, max, onChange }: StepperProps) {
-  const canDecrement = value > min;
-  const canIncrement = value < max;
-
-  return (
-    <div className={styles.stepperWrapper}>
-      <span className="label">{label}</span>
-      <div className={styles.stepper}>
-        <button
-          type="button"
-          className={styles.stepperButton}
-          onClick={() => canDecrement && onChange(value - 1)}
-          disabled={!canDecrement}
-          aria-label={`Decrease ${label}`}
-        >
-          −
-        </button>
-        <span className={styles.stepperValue} aria-live="polite">
-          {value}
-        </span>
-        <button
-          type="button"
-          className={styles.stepperButton}
-          onClick={() => canIncrement && onChange(value + 1)}
-          disabled={!canIncrement}
-          aria-label={`Increase ${label}`}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function SettingsModal(props: Props) {
   const { isOpen, activeConfig, onClose, onSaved, onResetGridRequested } = props;
 
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
-  // Initialize draft from activeConfig (includes autoRules)
+  // Draft state - initialize from activeConfig
   const [draft, setDraft] = useState<AppConfig>(() => activeConfig);
+
+  // Track which players are enabled (derived from draft.players)
+  const enabledPlayerIds = new Set(draft.players.map((p) => p.id));
+
+  // Player names - keyed by PlayerId, includes disabled players
+  const [playerNames, setPlayerNames] = useState<Record<PlayerId, string>>(() => {
+    const names: Record<PlayerId, string> = {} as Record<PlayerId, string>;
+    ALL_PLAYER_IDS.forEach((id) => {
+      const existing = activeConfig.players.find((p) => p.id === id);
+      names[id] = existing?.name ?? createDefaultPlayer(id).name;
+    });
+    return names;
+  });
+
+  // Scroll indicator state
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
 
   // Dialog states
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -129,6 +95,23 @@ export function SettingsModal(props: Props) {
     message: string;
   } | null>(null);
 
+  // Derived game params for display
+  const totalCards = getCards(draft.themeId).length;
+  const playerCount = draft.players.length;
+  const { handSize, publicCount } = deriveGameParams(totalCards, playerCount);
+
+  // Check scroll position to show/hide indicator
+  const checkScrollPosition = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    // Show indicator if more than 20px from bottom
+    setShowScrollIndicator(distanceFromBottom > 20);
+  }, []);
+
+  // Dialog open/close management
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
@@ -137,21 +120,106 @@ export function SettingsModal(props: Props) {
       openerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       if (!el.open) el.showModal();
+      // Check scroll position after dialog opens
+      requestAnimationFrame(checkScrollPosition);
     } else {
       if (el.open) el.close();
     }
-  }, [isOpen]);
+  }, [isOpen, checkScrollPosition]);
 
+  // Restore focus on close
   useEffect(() => {
     if (!isOpen) openerRef.current?.focus?.();
   }, [isOpen]);
 
-  const canAdd = draft.players.length < MAX_PLAYERS;
-  const canRemove = draft.players.length > MIN_PLAYERS;
+  // --- Player Toggle Logic ---
 
-  const playersSorted = useMemo(() => {
-    return [...draft.players].sort((a, b) => a.id - b.id);
-  }, [draft.players]);
+  /**
+   * Toggle a player's enabled state
+   * Enforces sequential constraint: disabling P(n) also disables P(n+1)...P6
+   */
+  function togglePlayer(id: PlayerId) {
+    // P1 and P2 cannot be toggled
+    if (id <= 2) return;
+
+    const isCurrentlyEnabled = enabledPlayerIds.has(id);
+
+    if (isCurrentlyEnabled) {
+      // Disabling: also disable all higher-numbered players
+      const newPlayers = draft.players.filter((p) => p.id < id);
+      setDraft((prev) => ({ ...prev, players: newPlayers }));
+    } else {
+      // Enabling: must also enable all lower-numbered players (sequential constraint)
+      // Find all players that should be enabled (all from 1 to id)
+      const newPlayerIds = ALL_PLAYER_IDS.filter((pid) => pid <= id);
+      const newPlayers = newPlayerIds.map((pid) => ({
+        id: pid,
+        name: playerNames[pid],
+        color: PLAYER_COLORS[pid - 1]!,
+      }));
+      setDraft((prev) => ({ ...prev, players: newPlayers }));
+    }
+  }
+
+  /**
+   * Check if a player checkbox should be disabled
+   * A checkbox is disabled if enabling it would violate sequential constraint
+   */
+  function isPlayerCheckboxDisabled(id: PlayerId): boolean {
+    // P1 and P2 are always enabled, no checkbox shown
+    if (id <= 2) return true;
+
+    // P3 is always enabled because the previous player (P2) is never disabled
+    if (id === 3) return false;
+
+    // If this player is enabled, check if any higher player is also enabled
+    // If so, we can't disable this one (would break sequence)
+    if (enabledPlayerIds.has(id)) {
+      for (let higher = id + 1; higher <= MAX_PLAYERS; higher++) {
+        if (enabledPlayerIds.has(higher as PlayerId)) {
+          return true; // Can't disable because higher player is enabled
+        }
+      }
+      return false; // Can disable
+    }
+
+    // If this player is disabled, check if the previous player is enabled
+    // Must enable in sequence
+    const prevId = (id - 1) as PlayerId;
+    return !enabledPlayerIds.has(prevId);
+  }
+
+  function setPlayerName(id: PlayerId, name: string) {
+    setPlayerNames((prev) => ({ ...prev, [id]: name }));
+
+    // Also update draft if player is enabled
+    if (enabledPlayerIds.has(id)) {
+      setDraft((prev) => ({
+        ...prev,
+        players: prev.players.map((p) => (p.id === id ? { ...p, name } : p)),
+      }));
+    }
+  }
+
+  function setField<K extends keyof AppConfig>(key: K, value: AppConfig[K]) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function toggleAutoRule(ruleId: AutoRuleId) {
+    setDraft((prev) => ({
+      ...prev,
+      autoRules: {
+        ...prev.autoRules,
+        [ruleId]: !prev.autoRules[ruleId],
+      },
+    }));
+  }
+
+  function showRuleInfo(rule: AutoRuleMeta) {
+    setRuleInfoDialog({ title: rule.name, message: rule.description });
+  }
+
+  // --- Dialog Actions ---
 
   function closeWithConfirm() {
     setShowDiscardConfirm(true);
@@ -171,58 +239,6 @@ export function SettingsModal(props: Props) {
     closeWithConfirm();
   }
 
-  function setField<K extends keyof AppConfig>(key: K, value: AppConfig[K]) {
-    setDraft((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function setPlayerName(id: PlayerId, name: string) {
-    setDraft((prev) => ({
-      ...prev,
-      players: prev.players.map((p) => (p.id === id ? { ...p, name } : p)),
-    }));
-  }
-
-  function addPlayer() {
-    if (!canAdd) return;
-    const nextId = nextAvailablePlayerId(playersSorted);
-    if (!nextId) return;
-
-    setDraft((prev) => ({
-      ...prev,
-      players: [
-        ...prev.players,
-        { id: nextId, name: defaultPlayerName(nextId), color: PLAYER_COLORS[nextId - 1]! },
-      ],
-    }));
-  }
-
-  function removePlayer(id: PlayerId) {
-    if (!canRemove) return;
-    if (id <= 2) return;
-
-    setDraft((prev) => ({
-      ...prev,
-      players: prev.players.filter((p) => p.id !== id),
-    }));
-  }
-
-  /**
-   * Toggle an auto rule - updates draft.autoRules
-   */
-  function toggleAutoRule(ruleId: AutoRuleId) {
-    setDraft((prev) => ({
-      ...prev,
-      autoRules: {
-        ...prev.autoRules,
-        [ruleId]: !prev.autoRules[ruleId],
-      },
-    }));
-  }
-
-  function showRuleInfo(rule: AutoRuleMeta) {
-    setRuleInfoDialog({ title: rule.name, message: rule.description });
-  }
-
   function handleSaveClick() {
     setShowSaveConfirm(true);
   }
@@ -230,7 +246,14 @@ export function SettingsModal(props: Props) {
   function handleSaveConfirmed() {
     setShowSaveConfirm(false);
     try {
-      const persisted = saveConfig(draft);
+      // Ensure player names are synced before saving
+      const finalPlayers = draft.players.map((p) => ({
+        ...p,
+        name: playerNames[p.id],
+      }));
+      const finalDraft = { ...draft, players: finalPlayers };
+
+      const persisted = saveConfig(finalDraft);
       onResetGridRequested();
       onSaved(persisted);
       onClose();
@@ -264,127 +287,142 @@ export function SettingsModal(props: Props) {
             </button>
           </header>
 
-          {/* Scrollable content area */}
-          <div className={styles.scrollableContent}>
-            {/* Theme Selection */}
-            <div className="modalSection">
-              <label className="field">
-                <span className="label">Theme</span>
-                <select
-                  value={draft.themeId}
-                  onChange={(e) =>
-                    setField("themeId", e.target.value as AppConfig["themeId"])
-                  }
-                >
-                  {THEMES.map((t) => (
-                    <option key={t.id} value={t.id} className={styles.dropdownOption}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {/* Numeric Steppers */}
-            <div className="modalSection twoCols">
-              <StepperInput
-                label="Hand size"
-                value={draft.handSize}
-                min={0}
-                max={21}
-                onChange={(v) => setField("handSize", v)}
-              />
-              <StepperInput
-                label="Public cards"
-                value={draft.publicCount}
-                min={0}
-                max={21}
-                onChange={(v) => setField("publicCount", v)}
-              />
-            </div>
-
-            {/* Players Section */}
-            <div className="modalSection">
-              <div className="sectionTitle">Players</div>
-
-              {playersSorted.map((p) => {
-                const label = p.id === 1 ? "Current player" : `Player ${p.id}`;
-                const showMinus = p.id >= 3;
-                const showPlus =
-                  p.id >= 2 &&
-                  p.id === playersSorted[playersSorted.length - 1]?.id &&
-                  canAdd;
-
-                return (
-                  <div key={p.id} className="playerRow">
-                    <label className="playerLabel">
-                      <span className="label">{label}</span>
-                      <input
-                        type="text"
-                        value={p.name}
-                        maxLength={3}
-                        onChange={(e) => setPlayerName(p.id, e.target.value)}
-                      />
-                    </label>
-
-                    <div className="rowButtons">
-                      {showMinus && (
-                        <button
-                          type="button"
-                          className="smallButton"
-                          onClick={() => removePlayer(p.id)}
-                        >
-                          −
-                        </button>
-                      )}
-                      {showPlus && (
-                        <button
-                          type="button"
-                          className="smallButton"
-                          onClick={addPlayer}
-                        >
-                          +
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Auto Rules Section */}
-            <div className={`modalSection ${styles.rulesSection}`}>
-              <div className="sectionTitle">Auto Rules</div>
-
-              {AUTO_RULES_META.map((rule) => {
-                const isEnabled = draft.autoRules[rule.id];
-
-                return (
-                  <div
-                    key={rule.id}
-                    className={`${styles.ruleRow} ${!isEnabled ? styles.disabled : ""}`}
+          {/* Scrollable content area with scroll indicator */}
+          <div className={styles.scrollWrapper}>
+            <div
+              ref={scrollContainerRef}
+              className={styles.scrollableContent}
+              onScroll={checkScrollPosition}
+            >
+              {/* Theme Selection */}
+              <div className="modalSection">
+                <label className="field">
+                  <span className="label">Theme</span>
+                  <select
+                    value={draft.themeId}
+                    onChange={(e) =>
+                      setField("themeId", e.target.value as AppConfig["themeId"])
+                    }
                   >
-                    <button
-                      type="button"
-                      className={styles.ruleInfoButton}
-                      onClick={() => showRuleInfo(rule)}
-                      aria-label={`Info about ${rule.name}`}
-                      title="More info"
-                    >
-                      ?
-                    </button>
-                    <span className={styles.ruleName}>{rule.name}</span>
-                    <input
-                      type="checkbox"
-                      className={styles.ruleCheckbox}
-                      checked={isEnabled}
-                      onChange={() => toggleAutoRule(rule.id)}
-                      aria-label={`Enable ${rule.name}`}
-                    />
+                    {THEMES.map((t) => (
+                      <option key={t.id} value={t.id} className={styles.dropdownOption}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* Derived Game Info (read-only) */}
+              <div className="modalSection">
+                <div className="sectionTitle">Game Setup</div>
+                <div className={styles.derivedInfo}>
+                  <div className={styles.derivedItem}>
+                    <span className={styles.derivedLabel}>Cards per player</span>
+                    <span className={styles.derivedValue}>{handSize}</span>
                   </div>
-                );
-              })}
+                  <div className={styles.derivedItem}>
+                    <span className={styles.derivedLabel}>Public cards</span>
+                    <span className={styles.derivedValue}>{publicCount}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Players Section */}
+              <div className="modalSection">
+                <div className="sectionTitle">Players</div>
+
+                {ALL_PLAYER_IDS.map((id) => {
+                  const isEnabled = enabledPlayerIds.has(id);
+                  const isAlwaysOn = id <= 2;
+                  const isCheckboxDisabled = isPlayerCheckboxDisabled(id);
+                  const playerColor = PLAYER_COLORS[id - 1];
+
+                  return (
+                    <div
+                      key={id}
+                      className={`${styles.playerRow} ${!isEnabled ? styles.playerDisabled : ""}`}
+                    >
+                      {/* Enable checkbox (hidden for P1/P2) */}
+                      <div className={styles.playerCheckboxCell}>
+                        {!isAlwaysOn && (
+                          <input
+                            type="checkbox"
+                            checked={isEnabled}
+                            onChange={() => togglePlayer(id)}
+                            disabled={isCheckboxDisabled}
+                            className={styles.playerCheckbox}
+                            aria-label={`Enable player ${id}`}
+                          />
+                        )}
+                      </div>
+
+                      {/* Color indicator */}
+                      <div
+                        className={styles.playerColorDot}
+                        style={{ backgroundColor: playerColor }}
+                        aria-hidden="true"
+                      />
+
+                      {/* Player label and name input */}
+                      <label className={styles.playerLabel}>
+                        <span className={styles.playerIdLabel}>P{id}</span>
+                        <input
+                          type="text"
+                          value={playerNames[id]}
+                          maxLength={3}
+                          onChange={(e) => setPlayerName(id, e.target.value)}
+                          disabled={!isEnabled}
+                          className={styles.playerNameInput}
+                          aria-label={`Player ${id} name`}
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Auto Rules Section */}
+              <div className={`modalSection ${styles.rulesSection}`}>
+                <div className="sectionTitle">Auto Rules</div>
+
+                {AUTO_RULES_META.map((rule) => {
+                  const isEnabled = draft.autoRules[rule.id];
+
+                  return (
+                    <div
+                      key={rule.id}
+                      className={`${styles.ruleRow} ${!isEnabled ? styles.disabled : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className={styles.ruleInfoButton}
+                        onClick={() => showRuleInfo(rule)}
+                        aria-label={`Info about ${rule.name}`}
+                        title="More info"
+                      >
+                        ?
+                      </button>
+                      <span className={styles.ruleName}>{rule.name}</span>
+                      <input
+                        type="checkbox"
+                        className={styles.ruleCheckbox}
+                        checked={isEnabled}
+                        onChange={() => toggleAutoRule(rule.id)}
+                        aria-label={`Enable ${rule.name}`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Scroll indicator - shows when more content below */}
+            {showScrollIndicator && (
+              <div className={styles.scrollIndicator} aria-hidden="true">
+                <span className={styles.scrollArrow}>↓</span>
+              </div>
+            )}
           </div>
 
           {/* Footer */}

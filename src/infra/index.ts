@@ -1,4 +1,4 @@
-// src/domain/index.ts
+// src/infra/index.ts
 
 export type { loadConfig, saveConfig } from "./configStorage";
 

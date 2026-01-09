@@ -44,20 +44,14 @@ const AutoRulesSchema: z.ZodType<AutoRulesConfig> = z
   })
   .default(DEFAULT_AUTO_RULES);
 
-export const AppConfigSchema: z.ZodType<AppConfig> = z
-  .object({
-    themeId: ThemeIdSchema,
-    handSize: z.number().int().min(0).max(21),
-    publicCount: z.number().int().min(0).max(21),
-    players: z.array(PlayerConfigSchema).min(MIN_PLAYERS).max(MAX_PLAYERS),
-    autoRules: AutoRulesSchema,
-  })
-  .superRefine((val, ctx) => {
-    if (!(val.publicCount < val.handSize)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["publicCount"],
-        message: "Public cards must be lower than hand size.",
-      });
-    }
-  });
+/**
+ * App Config Schema
+ *
+ * Note: handSize and publicCount are no longer stored - they are derived
+ * at runtime from theme (total cards) and player count.
+ */
+export const AppConfigSchema: z.ZodType<AppConfig> = z.object({
+  themeId: ThemeIdSchema,
+  players: z.array(PlayerConfigSchema).min(MIN_PLAYERS).max(MAX_PLAYERS),
+  autoRules: AutoRulesSchema,
+});

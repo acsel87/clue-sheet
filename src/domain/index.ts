@@ -10,6 +10,7 @@ export type {
   AutoRuleId,
   AutoRulesConfig,
   ConstraintId,
+  DerivedGameParams,
 } from "./config";
 export {
   MIN_PLAYERS,
@@ -19,6 +20,8 @@ export {
   PLAYER_COLORS,
   CONSTRAINT_DEPENDENCIES,
   isConstraintRequired,
+  deriveGameParams,
+  createDefaultPlayer,
 } from "./config";
 
 export { AppConfigSchema } from "./configSchema";
@@ -53,7 +56,7 @@ export {
 // Bar colors (visual helper markers)
 export { BAR_COLOR_HEX } from "./bar-colors";
 
-// Card ownership & shown-to tracking (Phase 4)
+// Card ownership & shown-to tracking
 export {
   type OtherPlayerId,
   type CardShownState,

@@ -16,13 +16,19 @@ export function loadConfig(): AppConfig {
   try {
     const parsedUnknown: unknown = JSON.parse(raw);
 
-    // Handle backwards compatibility: add autoRules if missing
-    if (
-      typeof parsedUnknown === "object" &&
-      parsedUnknown !== null &&
-      !("autoRules" in parsedUnknown)
-    ) {
-      (parsedUnknown as Record<string, unknown>).autoRules = DEFAULT_AUTO_RULES;
+    // Handle backwards compatibility
+    if (typeof parsedUnknown === "object" && parsedUnknown !== null) {
+      const obj = parsedUnknown as Record<string, unknown>;
+
+      // Add autoRules if missing (from older versions)
+      if (!("autoRules" in obj)) {
+        obj.autoRules = DEFAULT_AUTO_RULES;
+      }
+
+      // Remove deprecated fields (handSize, publicCount)
+      // These are now derived at runtime
+      delete obj.handSize;
+      delete obj.publicCount;
     }
 
     return AppConfigSchema.parse(parsedUnknown);
@@ -36,7 +42,7 @@ export function saveConfig(nextUnknown: unknown): AppConfig {
   const json = JSON.stringify(parsed);
   localStorage.setItem(KEY, json);
 
-  // basic integrity check (optional but aligns with your transactional posture)
+  // Basic integrity check
   const verify = localStorage.getItem(KEY);
   if (verify !== json) {
     throw new Error("localStorage write verification failed");

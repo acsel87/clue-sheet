@@ -5,15 +5,17 @@ import type { ThemeId } from "./";
 export const MIN_PLAYERS = 2 as const;
 export const MAX_PLAYERS = 6 as const;
 
+const MURDER_ITEMS_COUNT = 3;
+
 export type PlayerId = 1 | 2 | 3 | 4 | 5 | 6;
 
 export const PLAYER_COLORS: ReadonlyArray<string> = [
-  "#111827f2", // background - this is ignored anyway
-  "#ffffffff", // white
-  "#0082c8", // blue
-  "#f58231", // orange
-  "#911eb4", // purple
-  "#46f0f0", // cyan
+  "#111827f2", // P1 - background (ignored in most contexts)
+  "#ffffffff", // P2 - white
+  "#0082c8", // P3 - blue
+  "#f58231", // P4 - orange
+  "#911eb4", // P5 - purple
+  "#46f0f0", // P6 - cyan
 ] as const;
 
 export type PlayerConfig = Readonly<{
@@ -59,9 +61,8 @@ export type ConstraintId =
   | "numberToggleRemovesFromColumn";
 
 export const CONSTRAINT_DEPENDENCIES: Record<ConstraintId, AutoRuleId[]> = {
-  // Future: maybeComboRule will depend on these
-  numbersOnlyOnEmptyOrBars: [], // No rules depend on this yet
-  numberToggleRemovesFromColumn: [], // No rules depend on this yet
+  numbersOnlyOnEmptyOrBars: [],
+  numberToggleRemovesFromColumn: [],
 } as const;
 
 /**
@@ -76,23 +77,57 @@ export function isConstraintRequired(
   return dependentRules.some((ruleId) => autoRules[ruleId]);
 }
 
+/**
+ * APP CONFIGURATION
+ *
+ * Note: handSize and publicCount are derived from themeId and player count,
+ * not stored in config. Use deriveGameParams() to calculate them.
+ */
 export type AppConfig = Readonly<{
   themeId: ThemeId;
-  handSize: number;
-  publicCount: number;
   players: ReadonlyArray<PlayerConfig>;
   autoRules: AutoRulesConfig;
 }>;
 
+/**
+ * Derived game parameters calculated from config
+ */
+export type DerivedGameParams = Readonly<{
+  handSize: number;
+  publicCount: number;
+}>;
+
+/**
+ * Derive handSize and publicCount from total cards and player count
+ *
+ * Formula:
+ * - handSize = floor((totalCards - murderItemsCount) / playerCount)
+ * - publicCount = (totalCards - murderItemsCount) % playerCount
+ */
+export function deriveGameParams(
+  totalCards: number,
+  playerCount: number
+): DerivedGameParams {
+  const handSize = Math.floor((totalCards - MURDER_ITEMS_COUNT) / playerCount);
+  const publicCount = (totalCards - MURDER_ITEMS_COUNT) % playerCount;
+  return { handSize, publicCount };
+}
+
+/**
+ * Default player configuration factory
+ */
+export function createDefaultPlayer(id: PlayerId): PlayerConfig {
+  const name = id === 1 ? "You" : `P${id}`;
+  return { id, name, color: PLAYER_COLORS[id - 1]! };
+}
+
 export const DEFAULT_CONFIG: AppConfig = {
   themeId: "onePiece",
-  handSize: 0,
-  publicCount: 0,
   players: [
-    { id: 1, name: "You", color: PLAYER_COLORS[0]! },
-    { id: 2, name: "P2", color: PLAYER_COLORS[1]! },
-    { id: 3, name: "P3", color: PLAYER_COLORS[2]! },
-    { id: 4, name: "P4", color: PLAYER_COLORS[3]! },
+    createDefaultPlayer(1),
+    createDefaultPlayer(2),
+    createDefaultPlayer(3),
+    createDefaultPlayer(4),
   ],
   autoRules: DEFAULT_AUTO_RULES,
 } as const;

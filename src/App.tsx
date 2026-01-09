@@ -1,9 +1,10 @@
 // src/App.tsx
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { Sheet, SettingsModal } from "./ui";
 import type { AppConfig } from "./domain/config";
 import type { CardId } from "./domain";
+import { getCards, deriveGameParams } from "./domain";
 import { loadConfig } from "./infra/configStorage";
 import {
   type GameSetupState,
@@ -23,8 +24,16 @@ type SheetHandle = {
 
 export function App() {
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
+
+  // Derive game parameters from config
+  const { handSize, publicCount } = useMemo(() => {
+    const totalCards = getCards(config.themeId).length;
+    const playerCount = config.players.length;
+    return deriveGameParams(totalCards, playerCount);
+  }, [config.themeId, config.players.length]);
+
   const [setupState, setSetupState] = useState<GameSetupState>(() =>
-    createInitialSetup(config.publicCount)
+    createInitialSetup(publicCount)
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSession, setSettingsSession] = useState(0);
@@ -32,7 +41,7 @@ export function App() {
   // Ref to call Sheet reset methods
   const sheetRef = useRef<SheetHandle>(null);
 
-  const setupRequired = needsSetup(config.publicCount, config.handSize);
+  const setupRequired = needsSetup(publicCount, handSize);
   const effectivePhase: SetupPhase = !setupRequired ? "playing" : setupState.phase;
 
   function openSettings() {
@@ -54,7 +63,13 @@ export function App() {
 
     // Clear persisted setup and restart
     clearGameSetup();
-    const initial = createInitialSetup(config.publicCount);
+
+    // Recalculate with current config (may have changed)
+    const totalCards = getCards(config.themeId).length;
+    const playerCount = config.players.length;
+    const { publicCount: newPublicCount } = deriveGameParams(totalCards, playerCount);
+
+    const initial = createInitialSetup(newPublicCount);
     setSetupState(initial);
   }
 
@@ -70,7 +85,6 @@ export function App() {
         ...prev,
         currentSelection: Array.from(current).sort((a, b) => a - b) as CardId[],
       };
-      // Note: We don't persist during setup phases (per user request)
       return next;
     });
   }, []);
@@ -81,62 +95,56 @@ export function App() {
    * Returns the cards that were just confirmed so Sheet can apply marks
    * in the SAME event handler.
    */
-  const confirmPhase = useCallback(
-    (
-      phase: SetupPhase,
-      selectedCards: ReadonlyArray<CardId>
-    ): {
-      nextPhase: SetupPhase;
-      confirmedCards: ReadonlyArray<CardId>;
-      cardType: "public" | "owner";
-    } | null => {
-      let result: ReturnType<typeof confirmPhase> = null;
+  function confirmPhase(
+    phase: SetupPhase,
+    selectedCards: ReadonlyArray<CardId>
+  ): {
+    nextPhase: SetupPhase;
+    confirmedCards: ReadonlyArray<CardId>;
+    cardType: "public" | "owner";
+  } | null {
+    // Calculate result BEFORE setState - no mutation inside callback
+    if (phase === "selectPublic") {
+      const nextPhase: SetupPhase = handSize > 0 ? "selectOwner" : "playing";
 
-      setSetupState((prev) => {
-        let next: GameSetupState;
+      setSetupState((prev) => ({
+        ...prev,
+        phase: nextPhase,
+        publicCards: selectedCards,
+        currentSelection: [],
+      }));
 
-        if (phase === "selectPublic") {
-          const nextPhase: SetupPhase =
-            config.handSize > 0 ? "selectOwner" : "playing";
-          next = {
-            ...prev,
-            phase: nextPhase,
-            publicCards: selectedCards,
-            currentSelection: [],
-          };
-          result = {
-            nextPhase,
-            confirmedCards: selectedCards,
-            cardType: "public",
-          };
-        } else if (phase === "selectOwner") {
-          next = {
-            ...prev,
-            phase: "playing",
-            ownerCards: selectedCards,
-            currentSelection: [],
-          };
-          result = {
-            nextPhase: "playing",
-            confirmedCards: selectedCards,
-            cardType: "owner",
-          };
-          // Only persist when entering "playing" phase
-          saveGameSetup(next);
-        } else {
-          return prev;
-        }
+      return {
+        nextPhase,
+        confirmedCards: selectedCards,
+        cardType: "public",
+      };
+    }
 
-        return next;
-      });
+    if (phase === "selectOwner") {
+      const nextState: GameSetupState = {
+        phase: "playing",
+        publicCards: setupState.publicCards,
+        ownerCards: selectedCards,
+        currentSelection: [],
+      };
 
-      return result;
-    },
-    [config.handSize]
-  );
+      setSetupState(nextState);
+      // Only persist when entering "playing" phase
+      saveGameSetup(nextState);
+
+      return {
+        nextPhase: "playing",
+        confirmedCards: selectedCards,
+        cardType: "owner",
+      };
+    }
+
+    return null;
+  }
 
   /**
-   * Handle settings save - includes auto rules now
+   * Handle settings save
    */
   function handleSettingsSaved(nextConfig: AppConfig) {
     setConfig(nextConfig);
@@ -144,7 +152,7 @@ export function App() {
 
   function handleUndo() {
     console.log("Undo requested");
-    // TODO: Implement in Phase 7
+    // TODO: Implement in future phase
   }
 
   return (
@@ -152,6 +160,8 @@ export function App() {
       <Sheet
         ref={sheetRef}
         config={config}
+        handSize={handSize}
+        publicCount={publicCount}
         setupPhase={effectivePhase}
         publicCards={setupState.publicCards}
         ownerCards={setupState.ownerCards}

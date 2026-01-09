@@ -33,6 +33,8 @@ export type SheetHandle = {
 type Props = {
   ref?: Ref<SheetHandle>;
   config: AppConfig;
+  handSize: number;
+  publicCount: number;
   setupPhase: SetupPhase;
   publicCards: ReadonlyArray<CardId>;
   ownerCards: ReadonlyArray<CardId>;
@@ -54,6 +56,8 @@ export function Sheet(props: Props) {
   const {
     ref,
     config,
+    handSize,
+    publicCount,
     setupPhase,
     publicCards,
     ownerCards,
@@ -64,7 +68,7 @@ export function Sheet(props: Props) {
     onSettings,
   } = props;
 
-  const { themeId, publicCount, handSize, autoRules } = config;
+  const { themeId, autoRules } = config;
 
   const {
     getCellMark,
@@ -93,10 +97,14 @@ export function Sheet(props: Props) {
   const isGridDisabled = isInSetup;
 
   // Expose reset methods to parent via ref (React 19 style)
-  useImperativeHandle(ref, () => ({
-    resetAllMarks,
-    resetShownTo,
-  }), [resetAllMarks, resetShownTo]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      resetAllMarks,
+      resetShownTo,
+    }),
+    [resetAllMarks, resetShownTo]
+  );
 
   // Get card names for dialogs
   const getCardNames = useCallback(
@@ -198,7 +206,8 @@ export function Sheet(props: Props) {
             if (currentMark.primary === "has" || currentMark.primary === "not") {
               return {
                 allowed: false,
-                reason: "Maybe markers can only be added to empty or colored bar cells.",
+                reason:
+                  "Maybe markers can only be added to empty or colored bar cells.",
               };
             }
           }

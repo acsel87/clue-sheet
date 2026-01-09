@@ -6,20 +6,31 @@
   color: black;
 }
 
-/* Scrollable Content Area */
+/* ============================================
+   SCROLL WRAPPER & INDICATOR
+   ============================================ */
+
+.scrollWrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow shrinking in flex context */
+}
+
 .scrollableContent {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 60vh;
+  max-height: 55vh;
   overflow-y: auto;
   padding-right: 8px;
+  padding-bottom: 8px;
 
-  /* Always show scrollbar when content overflows */
+  /* Desktop scrollbar styling */
   scrollbar-gutter: stable;
 }
 
-/* Custom scrollbar styling for better visibility */
+/* WebKit scrollbar (desktop only) */
 .scrollableContent::-webkit-scrollbar {
   width: 8px;
 }
@@ -44,71 +55,170 @@
   scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
 }
 
-/* Stepper Input Component */
-.stepperWrapper {
+/* Scroll indicator - visual cue for more content below */
+.scrollIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 8px; /* Account for scrollbar gutter */
+  height: 40px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(17, 24, 39, 0.8) 50%,
+    rgba(17, 24, 39, 0.95) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+  pointer-events: none;
+}
+
+.scrollArrow {
+  font-size: 16px;
+  color: var(--muted);
+  animation: bounce 1.5s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+/* ============================================
+   DERIVED GAME INFO (read-only display)
+   ============================================ */
+
+.derivedInfo {
+  display: flex;
+  gap: 16px;
+}
+
+.derivedItem {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex: 1;
 }
 
-.stepper {
+.derivedLabel {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.derivedValue {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.derivedNote {
+  margin: 4px 0 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ============================================
+   PLAYER ROWS WITH CHECKBOXES
+   ============================================ */
+
+.playerRow {
   display: flex;
   align-items: center;
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
+  gap: 10px;
+  padding: 6px 0;
+  transition: opacity 0.15s ease;
 }
 
-.stepperButton {
-  width: 40px;
-  height: 40px;
+.playerRow.playerDisabled {
+  opacity: 0.45;
+}
+
+.playerCheckboxCell {
+  width: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  font-size: 20px;
-  font-weight: 300;
-  cursor: pointer;
-  transition: background 0.15s ease;
   flex-shrink: 0;
 }
 
-.stepperButton:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+.playerCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #3b82f6;
+  cursor: pointer;
 }
 
-.stepperButton:active:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
+.playerCheckbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
-.stepperButton:disabled {
-  opacity: 0.3;
+.playerCheckbox:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+}
+
+.playerColorDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.playerLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.playerIdLabel {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  min-width: 24px;
+}
+
+.playerNameInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  max-width: 80px;
+}
+
+.playerNameInput:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.stepperButton:focus-visible {
+.playerNameInput:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.45);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
-.stepperValue {
-  flex: 1;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text);
-  min-width: 40px;
-  padding: 0 4px;
-  background: transparent;
-  /* Make the number not selectable to avoid accidental selection */
-  user-select: none;
-}
+/* ============================================
+   AUTO RULES SECTION
+   ============================================ */
 
-/* Auto Rules Section */
 .rulesSection {
   display: flex;
   flex-direction: column;
