@@ -1,10 +1,16 @@
 // src/ui/Sheet.tsx
 
-import { useState, useCallback } from "react";
-import type { CardId, ThemeId, BarColorKey, NumberMarkerKey } from "../domain";
+import { useState, useCallback, useImperativeHandle, type Ref } from "react";
+import type {
+  CardId,
+  BarColorKey,
+  NumberMarkerKey,
+  AppConfig,
+  ConstraintId,
+} from "../domain";
 import type { OtherPlayerId } from "../domain/card-ownership";
 import type { SetupPhase } from "../infra/gameSetup";
-import { getCards, createMark } from "../domain";
+import { getCards, createMark, isConstraintRequired } from "../domain";
 import { getPhaseInfo, validateSelection } from "../infra/gameSetup";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
@@ -18,10 +24,15 @@ const PLAYER_COL_COUNT = 6;
 
 type SelectedCell = { cardId: CardId; playerId: number } | null;
 
+/** Handle exposed to parent for reset operations */
+export type SheetHandle = {
+  resetAllMarks: () => void;
+  resetShownTo: () => void;
+};
+
 type Props = {
-  themeId: ThemeId;
-  publicCount: number;
-  handSize: number;
+  ref?: Ref<SheetHandle>;
+  config: AppConfig;
   setupPhase: SetupPhase;
   publicCards: ReadonlyArray<CardId>;
   ownerCards: ReadonlyArray<CardId>;
@@ -41,9 +52,8 @@ type Props = {
 
 export function Sheet(props: Props) {
   const {
-    themeId,
-    publicCount,
-    handSize,
+    ref,
+    config,
     setupPhase,
     publicCards,
     ownerCards,
@@ -54,6 +64,8 @@ export function Sheet(props: Props) {
     onSettings,
   } = props;
 
+  const { themeId, publicCount, handSize, autoRules } = config;
+
   const {
     getCellMark,
     setPrimary,
@@ -62,9 +74,10 @@ export function Sheet(props: Props) {
     clearMark,
     batchSetMarks,
     removeNumberFromColumn,
+    resetAll: resetAllMarks,
   } = useCellMarks();
 
-  const { getShownTo, toggleShownTo } = useCardOwnership();
+  const { getShownTo, toggleShownTo, resetAll: resetShownTo } = useCardOwnership();
 
   const [selectedCell, setSelectedCell] = useState<SelectedCell>(null);
   const [selectedOwnedCard, setSelectedOwnedCard] = useState<CardId | null>(null);
@@ -79,6 +92,12 @@ export function Sheet(props: Props) {
   const isInSetup = setupPhase !== "playing";
   const isGridDisabled = isInSetup;
 
+  // Expose reset methods to parent via ref (React 19 style)
+  useImperativeHandle(ref, () => ({
+    resetAllMarks,
+    resetShownTo,
+  }), [resetAllMarks, resetShownTo]);
+
   // Get card names for dialogs
   const getCardNames = useCallback(
     (cardIds: ReadonlyArray<CardId>): string[] => {
@@ -91,10 +110,25 @@ export function Sheet(props: Props) {
   );
 
   /**
+   * Check if a constraint is currently enforced
+   */
+  const isConstraintEnforced = useCallback(
+    (constraintId: ConstraintId): boolean => {
+      return isConstraintRequired(constraintId, autoRules);
+    },
+    [autoRules]
+  );
+
+  /**
    * Apply cell marks for confirmed cards
+   * Only applies if the corresponding auto rule is enabled
    */
   const applyMarksForCards = useCallback(
     (cards: ReadonlyArray<CardId>, type: "public" | "owner") => {
+      // Check if the auto rule is enabled
+      if (type === "public" && !autoRules.publicCards) return;
+      if (type === "owner" && !autoRules.ownCards) return;
+
       const updates: Array<{
         cardId: CardId;
         playerId: number;
@@ -126,7 +160,6 @@ export function Sheet(props: Props) {
       });
 
       // For owner cards: also mark rest of P1 column as NOT
-      // (cards that are not owner cards and not public cards)
       if (type === "owner") {
         allCards.forEach((card) => {
           if (!cardSet.has(card.id) && !publicSet.has(card.id)) {
@@ -143,10 +176,13 @@ export function Sheet(props: Props) {
         batchSetMarks(updates);
       }
     },
-    [batchSetMarks, themeId, publicCards]
+    [batchSetMarks, themeId, publicCards, autoRules]
   );
 
-  // Validation for marker operations
+  /**
+   * Validation for marker operations
+   * Constraints are only enforced if dependent rules are enabled
+   */
   const createValidation = useCallback(
     (cardId: CardId, playerId: number): ValidationFns => {
       const currentMark = getCellMark(cardId, playerId);
@@ -156,7 +192,9 @@ export function Sheet(props: Props) {
         canMarkNot: () => ({ allowed: true }),
         canToggleNumber: (num: NumberMarkerKey) => {
           const isAdding = !currentMark.numbers.has(num);
-          if (isAdding) {
+
+          // Only enforce constraint if a rule depends on it
+          if (isAdding && isConstraintEnforced("numbersOnlyOnEmptyOrBars")) {
             if (currentMark.primary === "has" || currentMark.primary === "not") {
               return {
                 allowed: false,
@@ -169,7 +207,7 @@ export function Sheet(props: Props) {
         canToggleBar: () => ({ allowed: true }),
       };
     },
-    [getCellMark]
+    [getCellMark, isConstraintEnforced]
   );
 
   // Handle confirm button click
@@ -192,11 +230,6 @@ export function Sheet(props: Props) {
 
   /**
    * Handle confirmation - ALL state updates in ONE event handler
-   * 
-   * This is the React 19 recommended pattern:
-   * 1. Confirm phase transition (updates setupState)
-   * 2. Apply cell marks (updates cellMarks)
-   * Both happen synchronously in the same event, single render.
    */
   function handleConfirmed() {
     setShowConfirmDialog(false);
@@ -204,7 +237,7 @@ export function Sheet(props: Props) {
     // Confirm phase and get result
     const result = onConfirmPhase(setupPhase, currentSelection);
 
-    // Apply marks in the SAME event handler (not useEffect)
+    // Apply marks in the SAME event handler
     if (result) {
       applyMarksForCards(result.confirmedCards, result.cardType);
     }
@@ -242,7 +275,9 @@ export function Sheet(props: Props) {
     if (!selectedCell) return;
     const currentMark = getCellMark(selectedCell.cardId, selectedCell.playerId);
     const isRemoving = currentMark.numbers.has(num);
-    if (isRemoving) {
+
+    // Only remove from column if constraint is enforced
+    if (isRemoving && isConstraintEnforced("numberToggleRemovesFromColumn")) {
       removeNumberFromColumn(selectedCell.playerId, num);
     } else {
       toggleNumber(selectedCell.cardId, selectedCell.playerId, num);
@@ -309,6 +344,7 @@ export function Sheet(props: Props) {
             selectedOwnedCard={selectedOwnedCard}
             getShownTo={getShownTo}
             onOwnedCardClick={handleOwnedCardClick}
+            autoRules={autoRules}
           />
         </div>
 

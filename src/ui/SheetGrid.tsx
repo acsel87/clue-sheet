@@ -1,7 +1,14 @@
 // src/ui/SheetGrid.tsx
 
 import { PLAYER_COLORS, BAR_COLOR_HEX } from "../domain";
-import type { CardId, CategoryId, ThemeId, CellMark, NumberMarkerKey } from "../domain";
+import type {
+  CardId,
+  CategoryId,
+  ThemeId,
+  CellMark,
+  NumberMarkerKey,
+  AutoRulesConfig,
+} from "../domain";
 import type { OtherPlayerId } from "../domain/card-ownership";
 import type { SetupPhase } from "../infra/gameSetup";
 import { CATEGORIES, cardsByCategory } from "../domain/themes";
@@ -25,6 +32,7 @@ type Props = {
   selectedOwnedCard: CardId | null;
   getShownTo: (cardId: CardId) => ReadonlySet<OtherPlayerId>;
   onOwnedCardClick: (cardId: CardId) => void;
+  autoRules: AutoRulesConfig;
 };
 
 export function SheetGrid(props: Props) {
@@ -43,6 +51,7 @@ export function SheetGrid(props: Props) {
     selectedOwnedCard,
     getShownTo,
     onOwnedCardClick,
+    autoRules,
   } = props;
 
   const cols = Array.from({ length: playerCount }, (_, i) => i + 1);
@@ -90,6 +99,7 @@ export function SheetGrid(props: Props) {
           selectedOwnedCard={selectedOwnedCard}
           getShownTo={getShownTo}
           onOwnedCardClick={onOwnedCardClick}
+          autoRules={autoRules}
         />
       ))}
     </div>
@@ -115,6 +125,7 @@ function CategoryBlock(props: {
   selectedOwnedCard: CardId | null;
   getShownTo: (cardId: CardId) => ReadonlySet<OtherPlayerId>;
   onOwnedCardClick: (cardId: CardId) => void;
+  autoRules: AutoRulesConfig;
 }) {
   const {
     themeId,
@@ -133,6 +144,7 @@ function CategoryBlock(props: {
     selectedOwnedCard,
     getShownTo,
     onOwnedCardClick,
+    autoRules,
   } = props;
 
   const isInSetup = setupPhase !== "playing";
@@ -152,11 +164,15 @@ function CategoryBlock(props: {
         // Owner cards not in public set can be clicked for shown-to
         const canClickForShownTo = !isInSetup && isOwnerCard;
 
-        // Murder item detection (all cells NOT, not locked)
-        const isMurderItem = !isRowLocked && cols.every((playerId) => {
-          const mark = getCellMark(card.id, playerId);
-          return mark.primary === "not";
-        });
+        // Murder item detection (only if rule is enabled)
+        // All cells must be NOT, card must not be locked
+        const isMurderItem =
+          autoRules.murderDetection &&
+          !isRowLocked &&
+          cols.every((playerId) => {
+            const mark = getCellMark(card.id, playerId);
+            return mark.primary === "not";
+          });
 
         // Shown-to state
         const shownTo = getShownTo(card.id);
@@ -279,7 +295,16 @@ function MarkCell(props: {
   isPublicCard: boolean;
   onClick: () => void;
 }) {
-  const { playerId, categoryColor, mark, isSelected, isDisabled, isLocked, isPublicCard, onClick } = props;
+  const {
+    playerId,
+    categoryColor,
+    mark,
+    isSelected,
+    isDisabled,
+    isLocked,
+    isPublicCard,
+    onClick,
+  } = props;
 
   const barStripeStyle = getBarStripeStyle(mark);
   const hasBars = mark.primary === "bars" && mark.barColors.size > 0;
@@ -293,7 +318,9 @@ function MarkCell(props: {
     hasBars || playerId === 1
       ? undefined
       : isLocked
-        ? (isPublicCard ? "white" : undefined)
+        ? isPublicCard
+          ? "white"
+          : undefined
         : categoryColor;
 
   return (
@@ -333,11 +360,7 @@ function CellContent({ mark }: { mark: CellMark }) {
 
 function NumbersOverlay({ numbers }: { numbers: ReadonlySet<NumberMarkerKey> }) {
   const sortedNumbers = Array.from(numbers).sort((a, b) => a - b);
-  return (
-    <span className={styles.numbersOverlay}>
-      {sortedNumbers.join("")}
-    </span>
-  );
+  return <span className={styles.numbersOverlay}>{sortedNumbers.join("")}</span>;
 }
 
 function getBarStripeStyle(mark: CellMark): React.CSSProperties | undefined {

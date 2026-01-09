@@ -3,12 +3,22 @@
 export type { CategoryId, CardId, Card, ThemeId } from "./themes";
 export { CATEGORIES, THEMES, getCards, cardsByCategory } from "./themes";
 
-export type { PlayerId, PlayerConfig, AppConfig } from "./config";
+export type {
+  PlayerId,
+  PlayerConfig,
+  AppConfig,
+  AutoRuleId,
+  AutoRulesConfig,
+  ConstraintId,
+} from "./config";
 export {
   MIN_PLAYERS,
   MAX_PLAYERS,
   DEFAULT_CONFIG,
+  DEFAULT_AUTO_RULES,
   PLAYER_COLORS,
+  CONSTRAINT_DEPENDENCIES,
+  isConstraintRequired,
 } from "./config";
 
 export { AppConfigSchema } from "./configSchema";

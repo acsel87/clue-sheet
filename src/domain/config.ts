@@ -22,11 +22,66 @@ export type PlayerConfig = Readonly<{
   color: string;
 }>;
 
+/**
+ * AUTO RULES CONFIGURATION
+ *
+ * Each rule can be enabled/disabled by the user.
+ * Some rules depend on constraints being enforced.
+ */
+export type AutoRuleId =
+  | "murderDetection"
+  | "publicCards"
+  | "ownCards"
+  | "columnElimination";
+
+export type AutoRulesConfig = Readonly<{
+  murderDetection: boolean;
+  publicCards: boolean;
+  ownCards: boolean;
+  columnElimination: boolean;
+}>;
+
+export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
+  murderDetection: true,
+  publicCards: true,
+  ownCards: true,
+  columnElimination: false,
+} as const;
+
+/**
+ * CONSTRAINT-RULE DEPENDENCIES
+ *
+ * Maps constraints to the rules that require them.
+ * A constraint is only enforced if at least one dependent rule is enabled.
+ */
+export type ConstraintId =
+  | "numbersOnlyOnEmptyOrBars"
+  | "numberToggleRemovesFromColumn";
+
+export const CONSTRAINT_DEPENDENCIES: Record<ConstraintId, AutoRuleId[]> = {
+  // Future: maybeComboRule will depend on these
+  numbersOnlyOnEmptyOrBars: [], // No rules depend on this yet
+  numberToggleRemovesFromColumn: [], // No rules depend on this yet
+} as const;
+
+/**
+ * Check if a constraint should be enforced based on enabled rules
+ */
+export function isConstraintRequired(
+  constraintId: ConstraintId,
+  autoRules: AutoRulesConfig
+): boolean {
+  const dependentRules = CONSTRAINT_DEPENDENCIES[constraintId];
+  if (dependentRules.length === 0) return false;
+  return dependentRules.some((ruleId) => autoRules[ruleId]);
+}
+
 export type AppConfig = Readonly<{
   themeId: ThemeId;
-  handSize: number; // integer >= 0
-  publicCount: number; // integer >= 0, and < handSize (your validation rule)
-  players: ReadonlyArray<PlayerConfig>; // length 2..6
+  handSize: number;
+  publicCount: number;
+  players: ReadonlyArray<PlayerConfig>;
+  autoRules: AutoRulesConfig;
 }>;
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -39,4 +94,5 @@ export const DEFAULT_CONFIG: AppConfig = {
     { id: 3, name: "P3", color: PLAYER_COLORS[2]! },
     { id: 4, name: "P4", color: PLAYER_COLORS[3]! },
   ],
+  autoRules: DEFAULT_AUTO_RULES,
 } as const;

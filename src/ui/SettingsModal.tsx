@@ -7,6 +7,7 @@ import {
   PLAYER_COLORS,
   type AppConfig,
   type PlayerId,
+  type AutoRuleId,
 } from "../domain/config";
 import { THEMES } from "../domain/themes";
 import { saveConfig } from "../infra/configStorage";
@@ -21,45 +22,37 @@ type Props = {
   onResetGridRequested: () => void;
 };
 
-// --- Auto Rules Configuration ---
-// These are placeholder rules - actual implementation will come during integration
-type AutoRuleId = "murderDetection" | "publicCards" | "ownCards" | "columnElimination";
-
-type AutoRule = {
+// --- Auto Rules Metadata ---
+type AutoRuleMeta = {
   id: AutoRuleId;
   name: string;
   description: string;
-  enabled: boolean;
 };
 
-const DEFAULT_AUTO_RULES: AutoRule[] = [
+const AUTO_RULES_META: AutoRuleMeta[] = [
   {
     id: "murderDetection",
     name: "Murder item detection",
     description:
       "When all cells in a row are marked as NOT, the card name will be highlighted as a potential murder item with a red circular border.",
-    enabled: true,
   },
   {
     id: "publicCards",
     name: "Public cards auto-mark",
     description:
-      "When public cards are locked, all cells in those rows are automatically marked as NOT and the rows are disabled.",
-    enabled: true,
+      "When public cards are confirmed, all cells in those rows are automatically marked as NOT and the rows are disabled.",
   },
   {
     id: "ownCards",
     name: "Own cards auto-mark",
     description:
-      "When you mark your own card as HAS, automatically mark all other cells in that row as NOT, and mark all other cards in your column as NOT.",
-    enabled: true,
+      "When your cards are confirmed, your column is marked as HAS for those cards and NOT for others. Other columns are marked as NOT for your cards.",
   },
   {
     id: "columnElimination",
     name: "Column elimination",
     description:
       "When a card is marked as HAS for any player, automatically mark all other cells in that row as NOT.",
-    enabled: false,
   },
 ];
 
@@ -125,15 +118,16 @@ export function SettingsModal(props: Props) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
+  // Initialize draft from activeConfig (includes autoRules)
   const [draft, setDraft] = useState<AppConfig>(() => activeConfig);
-  const [autoRules, setAutoRules] = useState<AutoRule[]>(() => DEFAULT_AUTO_RULES);
 
   // Dialog states
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
-  const [ruleInfoDialog, setRuleInfoDialog] = useState<{ title: string; message: string } | null>(
-    null
-  );
+  const [ruleInfoDialog, setRuleInfoDialog] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -212,13 +206,20 @@ export function SettingsModal(props: Props) {
     }));
   }
 
+  /**
+   * Toggle an auto rule - updates draft.autoRules
+   */
   function toggleAutoRule(ruleId: AutoRuleId) {
-    setAutoRules((prev) =>
-      prev.map((rule) => (rule.id === ruleId ? { ...rule, enabled: !rule.enabled } : rule))
-    );
+    setDraft((prev) => ({
+      ...prev,
+      autoRules: {
+        ...prev.autoRules,
+        [ruleId]: !prev.autoRules[ruleId],
+      },
+    }));
   }
 
-  function showRuleInfo(rule: AutoRule) {
+  function showRuleInfo(rule: AutoRuleMeta) {
     setRuleInfoDialog({ title: rule.name, message: rule.description });
   }
 
@@ -230,7 +231,6 @@ export function SettingsModal(props: Props) {
     setShowSaveConfirm(false);
     try {
       const persisted = saveConfig(draft);
-      // TODO: Also persist autoRules when we implement storage for them
       onResetGridRequested();
       onSaved(persisted);
       onClose();
@@ -264,120 +264,127 @@ export function SettingsModal(props: Props) {
             </button>
           </header>
 
-          {/* Theme Selection */}
-          <div className="modalSection">
-            <label className="field">
-              <span className="label">Theme</span>
-              <select
-                value={draft.themeId}
-                onChange={(e) =>
-                  setField("themeId", e.target.value as AppConfig["themeId"])
-                }
-              >
-                {THEMES.map((t) => (
-                  <option key={t.id} value={t.id} className={styles.dropdownOption}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {/* Numeric Steppers */}
-          <div className="modalSection twoCols">
-            <StepperInput
-              label="Hand size"
-              value={draft.handSize}
-              min={0}
-              max={21}
-              onChange={(v) => setField("handSize", v)}
-            />
-            <StepperInput
-              label="Public cards"
-              value={draft.publicCount}
-              min={0}
-              max={21}
-              onChange={(v) => setField("publicCount", v)}
-            />
-          </div>
-
-          {/* Players Section */}
-          <div className="modalSection">
-            <div className="sectionTitle">Players</div>
-
-            {playersSorted.map((p) => {
-              const label = p.id === 1 ? "Current player" : `Player ${p.id}`;
-              const showMinus = p.id >= 3;
-              const showPlus =
-                p.id >= 2 &&
-                p.id === playersSorted[playersSorted.length - 1]?.id &&
-                canAdd;
-
-              return (
-                <div key={p.id} className="playerRow">
-                  <label className="playerLabel">
-                    <span className="label">{label}</span>
-                    <input
-                      type="text"
-                      value={p.name}
-                      maxLength={3}
-                      onChange={(e) => setPlayerName(p.id, e.target.value)}
-                    />
-                  </label>
-
-                  <div className="rowButtons">
-                    {showMinus && (
-                      <button
-                        type="button"
-                        className="smallButton"
-                        onClick={() => removePlayer(p.id)}
-                      >
-                        −
-                      </button>
-                    )}
-                    {showPlus && (
-                      <button
-                        type="button"
-                        className="smallButton"
-                        onClick={addPlayer}
-                      >
-                        +
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Auto Rules Section */}
-          <div className={`modalSection ${styles.rulesSection}`}>
-            <div className="sectionTitle">Auto Rules</div>
-
-            {autoRules.map((rule) => (
-              <div
-                key={rule.id}
-                className={`${styles.ruleRow} ${!rule.enabled ? styles.disabled : ""}`}
-              >
-                <button
-                  type="button"
-                  className={styles.ruleInfoButton}
-                  onClick={() => showRuleInfo(rule)}
-                  aria-label={`Info about ${rule.name}`}
-                  title="More info"
+          {/* Scrollable content area */}
+          <div className={styles.scrollableContent}>
+            {/* Theme Selection */}
+            <div className="modalSection">
+              <label className="field">
+                <span className="label">Theme</span>
+                <select
+                  value={draft.themeId}
+                  onChange={(e) =>
+                    setField("themeId", e.target.value as AppConfig["themeId"])
+                  }
                 >
-                  ?
-                </button>
-                <span className={styles.ruleName}>{rule.name}</span>
-                <input
-                  type="checkbox"
-                  className={styles.ruleCheckbox}
-                  checked={rule.enabled}
-                  onChange={() => toggleAutoRule(rule.id)}
-                  aria-label={`Enable ${rule.name}`}
-                />
-              </div>
-            ))}
+                  {THEMES.map((t) => (
+                    <option key={t.id} value={t.id} className={styles.dropdownOption}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {/* Numeric Steppers */}
+            <div className="modalSection twoCols">
+              <StepperInput
+                label="Hand size"
+                value={draft.handSize}
+                min={0}
+                max={21}
+                onChange={(v) => setField("handSize", v)}
+              />
+              <StepperInput
+                label="Public cards"
+                value={draft.publicCount}
+                min={0}
+                max={21}
+                onChange={(v) => setField("publicCount", v)}
+              />
+            </div>
+
+            {/* Players Section */}
+            <div className="modalSection">
+              <div className="sectionTitle">Players</div>
+
+              {playersSorted.map((p) => {
+                const label = p.id === 1 ? "Current player" : `Player ${p.id}`;
+                const showMinus = p.id >= 3;
+                const showPlus =
+                  p.id >= 2 &&
+                  p.id === playersSorted[playersSorted.length - 1]?.id &&
+                  canAdd;
+
+                return (
+                  <div key={p.id} className="playerRow">
+                    <label className="playerLabel">
+                      <span className="label">{label}</span>
+                      <input
+                        type="text"
+                        value={p.name}
+                        maxLength={3}
+                        onChange={(e) => setPlayerName(p.id, e.target.value)}
+                      />
+                    </label>
+
+                    <div className="rowButtons">
+                      {showMinus && (
+                        <button
+                          type="button"
+                          className="smallButton"
+                          onClick={() => removePlayer(p.id)}
+                        >
+                          −
+                        </button>
+                      )}
+                      {showPlus && (
+                        <button
+                          type="button"
+                          className="smallButton"
+                          onClick={addPlayer}
+                        >
+                          +
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Auto Rules Section */}
+            <div className={`modalSection ${styles.rulesSection}`}>
+              <div className="sectionTitle">Auto Rules</div>
+
+              {AUTO_RULES_META.map((rule) => {
+                const isEnabled = draft.autoRules[rule.id];
+
+                return (
+                  <div
+                    key={rule.id}
+                    className={`${styles.ruleRow} ${!isEnabled ? styles.disabled : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className={styles.ruleInfoButton}
+                      onClick={() => showRuleInfo(rule)}
+                      aria-label={`Info about ${rule.name}`}
+                      title="More info"
+                    >
+                      ?
+                    </button>
+                    <span className={styles.ruleName}>{rule.name}</span>
+                    <input
+                      type="checkbox"
+                      className={styles.ruleCheckbox}
+                      checked={isEnabled}
+                      onChange={() => toggleAutoRule(rule.id)}
+                      aria-label={`Enable ${rule.name}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Footer */}

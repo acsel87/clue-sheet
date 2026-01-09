@@ -5,9 +5,11 @@ import {
   MAX_PLAYERS,
   MIN_PLAYERS,
   THEMES,
+  DEFAULT_AUTO_RULES,
   type AppConfig,
   type PlayerId,
   type ThemeId,
+  type AutoRulesConfig,
 } from "./";
 
 const ThemeIdSchema: z.ZodType<ThemeId> = z
@@ -27,12 +29,28 @@ const PlayerConfigSchema: z.ZodType<AppConfig["players"][number]> = z.object({
   color: z.string().trim().min(1).max(20),
 });
 
+/**
+ * Auto Rules Schema
+ * Provides defaults for missing fields (backwards compatibility)
+ */
+const AutoRulesSchema: z.ZodType<AutoRulesConfig> = z
+  .object({
+    murderDetection: z.boolean().default(DEFAULT_AUTO_RULES.murderDetection),
+    publicCards: z.boolean().default(DEFAULT_AUTO_RULES.publicCards),
+    ownCards: z.boolean().default(DEFAULT_AUTO_RULES.ownCards),
+    columnElimination: z
+      .boolean()
+      .default(DEFAULT_AUTO_RULES.columnElimination),
+  })
+  .default(DEFAULT_AUTO_RULES);
+
 export const AppConfigSchema: z.ZodType<AppConfig> = z
   .object({
     themeId: ThemeIdSchema,
     handSize: z.number().int().min(0).max(21),
     publicCount: z.number().int().min(0).max(21),
     players: z.array(PlayerConfigSchema).min(MIN_PLAYERS).max(MAX_PLAYERS),
+    autoRules: AutoRulesSchema,
   })
   .superRefine((val, ctx) => {
     if (!(val.publicCount < val.handSize)) {

@@ -1,6 +1,6 @@
 // src/App.tsx
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Sheet, SettingsModal } from "./ui";
 import type { AppConfig } from "./domain/config";
 import type { CardId } from "./domain";
@@ -15,6 +15,12 @@ import {
 } from "./infra/gameSetup";
 import "./index.css";
 
+/** Handle exposed by Sheet for reset operations */
+type SheetHandle = {
+  resetAllMarks: () => void;
+  resetShownTo: () => void;
+};
+
 export function App() {
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
   const [setupState, setSetupState] = useState<GameSetupState>(() =>
@@ -22,6 +28,9 @@ export function App() {
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSession, setSettingsSession] = useState(0);
+
+  // Ref to call Sheet reset methods
+  const sheetRef = useRef<SheetHandle>(null);
 
   const setupRequired = needsSetup(config.publicCount, config.handSize);
   const effectivePhase: SetupPhase = !setupRequired ? "playing" : setupState.phase;
@@ -31,7 +40,19 @@ export function App() {
     setSettingsOpen(true);
   }
 
+  /**
+   * Full game reset:
+   * 1. Clear all cell marks
+   * 2. Clear shown-to state
+   * 3. Clear setup state
+   * 4. Start fresh setup wizard
+   */
   function resetGame() {
+    // Clear all grid state via Sheet ref
+    sheetRef.current?.resetAllMarks();
+    sheetRef.current?.resetShownTo();
+
+    // Clear persisted setup and restart
     clearGameSetup();
     const initial = createInitialSetup(config.publicCount);
     setSetupState(initial);
@@ -49,23 +70,22 @@ export function App() {
         ...prev,
         currentSelection: Array.from(current).sort((a, b) => a - b) as CardId[],
       };
-      saveGameSetup(next);
+      // Note: We don't persist during setup phases (per user request)
       return next;
     });
   }, []);
 
   /**
    * Confirm current phase selection
-   * 
+   *
    * Returns the cards that were just confirmed so Sheet can apply marks
-   * in the SAME event handler (not via useEffect).
-   * 
-   * This follows React 19 best practices:
-   * "Code that runs because a component was displayed should be in Effects,
-   *  the rest should be in events."
+   * in the SAME event handler.
    */
   const confirmPhase = useCallback(
-    (phase: SetupPhase, selectedCards: ReadonlyArray<CardId>): {
+    (
+      phase: SetupPhase,
+      selectedCards: ReadonlyArray<CardId>
+    ): {
       nextPhase: SetupPhase;
       confirmedCards: ReadonlyArray<CardId>;
       cardType: "public" | "owner";
@@ -101,11 +121,12 @@ export function App() {
             confirmedCards: selectedCards,
             cardType: "owner",
           };
+          // Only persist when entering "playing" phase
+          saveGameSetup(next);
         } else {
           return prev;
         }
 
-        saveGameSetup(next);
         return next;
       });
 
@@ -114,16 +135,23 @@ export function App() {
     [config.handSize]
   );
 
+  /**
+   * Handle settings save - includes auto rules now
+   */
+  function handleSettingsSaved(nextConfig: AppConfig) {
+    setConfig(nextConfig);
+  }
+
   function handleUndo() {
     console.log("Undo requested");
+    // TODO: Implement in Phase 7
   }
 
   return (
     <main className="app">
       <Sheet
-        themeId={config.themeId}
-        publicCount={config.publicCount}
-        handSize={config.handSize}
+        ref={sheetRef}
+        config={config}
         setupPhase={effectivePhase}
         publicCards={setupState.publicCards}
         ownerCards={setupState.ownerCards}
@@ -139,7 +167,7 @@ export function App() {
         isOpen={settingsOpen}
         activeConfig={config}
         onClose={() => setSettingsOpen(false)}
-        onSaved={(next) => setConfig(next)}
+        onSaved={handleSettingsSaved}
         onResetGridRequested={resetGame}
       />
     </main>

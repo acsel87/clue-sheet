@@ -281,6 +281,11 @@ export function useCellMarks() {
     []
   );
 
+  /** Reset all cell marks (for game reset) */
+  const resetAll = useCallback(() => {
+    setCellMarks(new Map());
+  }, []);
+
   // ============================================================
   // DERIVED STATE (for display/debugging)
   // ============================================================
@@ -327,6 +332,7 @@ export function useCellMarks() {
     // Bulk operations
     clearMark,
     batchSetMarks,
+    resetAll,
 
     // Derived state
     allUsedNumbers,

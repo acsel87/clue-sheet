@@ -1,6 +1,11 @@
 // src/infra/configStorage.ts
 
-import { AppConfigSchema, DEFAULT_CONFIG, type AppConfig } from "../domain";
+import {
+  AppConfigSchema,
+  DEFAULT_CONFIG,
+  DEFAULT_AUTO_RULES,
+  type AppConfig,
+} from "../domain";
 
 const KEY = "clue_sheet_config_v1";
 
@@ -10,6 +15,16 @@ export function loadConfig(): AppConfig {
 
   try {
     const parsedUnknown: unknown = JSON.parse(raw);
+
+    // Handle backwards compatibility: add autoRules if missing
+    if (
+      typeof parsedUnknown === "object" &&
+      parsedUnknown !== null &&
+      !("autoRules" in parsedUnknown)
+    ) {
+      (parsedUnknown as Record<string, unknown>).autoRules = DEFAULT_AUTO_RULES;
+    }
+
     return AppConfigSchema.parse(parsedUnknown);
   } catch {
     return DEFAULT_CONFIG;
