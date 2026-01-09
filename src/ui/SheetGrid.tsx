@@ -191,14 +191,14 @@ function CategoryBlock(props: {
           .join(" ");
 
         // Card cell style
+        // Public cards: white background with black text
+        // Owner cards: transparent (for shown-to gradient to work)
+        // Normal cards: category background color
         const cardCellStyle: React.CSSProperties = {
-          // Locked rows (public/owner) get white background
-          // Owner cards with shown-to get gradient
-          // Otherwise category color
-          ...(isRowLocked
+          ...(isPublicCard
             ? { backgroundColor: "white", color: "black" }
-            : isOwnerCard && hasShownToAny
-              ? getShownToStyle(shownTo)
+            : isOwnerCard
+              ? { ...(hasShownToAny ? getShownToStyle(shownTo) : {}) }
               : { backgroundColor: color }),
         };
 
@@ -233,7 +233,15 @@ function CategoryBlock(props: {
 
             {/* Mark cells for each player */}
             {cols.map((playerId) => {
-              const isCellDisabled = isGridDisabled || isRowLocked;
+              // P1 column cells (non-public, non-owner) should also be locked after setup
+              const isP1ColumnLocked =
+                playerId === 1 &&
+                setupPhase === "playing" &&
+                !isPublicCard &&
+                !isOwnerCard;
+
+              const isCellDisabled = isGridDisabled || isRowLocked || isP1ColumnLocked;
+              const isCellLocked = isRowLocked || isP1ColumnLocked;
 
               return (
                 <MarkCell
@@ -247,7 +255,8 @@ function CategoryBlock(props: {
                     selectedCell?.playerId === playerId
                   }
                   isDisabled={isCellDisabled}
-                  isLocked={isRowLocked}
+                  isLocked={isCellLocked}
+                  isPublicCard={isPublicCard}
                   onClick={() => !isCellDisabled && onCellClick(card.id, playerId)}
                 />
               );
@@ -267,12 +276,25 @@ function MarkCell(props: {
   isSelected: boolean;
   isDisabled: boolean;
   isLocked: boolean;
+  isPublicCard: boolean;
   onClick: () => void;
 }) {
-  const { playerId, categoryColor, mark, isSelected, isDisabled, isLocked, onClick } = props;
+  const { playerId, categoryColor, mark, isSelected, isDisabled, isLocked, isPublicCard, onClick } = props;
 
   const barStripeStyle = getBarStripeStyle(mark);
   const hasBars = mark.primary === "bars" && mark.barColors.size > 0;
+
+  // Background logic:
+  // - P1 column OR bars: no background (undefined)
+  // - Public card row (locked): white background
+  // - Owner card row (locked but NOT public): no background (undefined)
+  // - Normal cells: category color
+  const cellBackgroundColor =
+    hasBars || playerId === 1
+      ? undefined
+      : isLocked
+        ? (isPublicCard ? "white" : undefined)
+        : categoryColor;
 
   return (
     <button
@@ -283,7 +305,7 @@ function MarkCell(props: {
         ${isDisabled ? styles.cellDisabled : ""} 
         ${isLocked ? styles.cellLocked : ""}`}
       style={{
-        backgroundColor: (hasBars || playerId === 1) ? undefined : isLocked ? "white" : categoryColor,
+        backgroundColor: cellBackgroundColor,
         borderColor: playerId === 1 ? undefined : PLAYER_COLORS[playerId - 1],
         ...barStripeStyle,
       }}

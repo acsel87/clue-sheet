@@ -92,12 +92,6 @@ export function Sheet(props: Props) {
 
   /**
    * Apply cell marks for confirmed cards
-   * 
-   * Called directly in the event handler, NOT in useEffect.
-   * This follows React 19 best practices:
-   * - No double render
-   * - Clear data flow (user action → state update)
-   * - Easier to debug and reason about
    */
   const applyMarksForCards = useCallback(
     (cards: ReadonlyArray<CardId>, type: "public" | "owner") => {
@@ -106,6 +100,10 @@ export function Sheet(props: Props) {
         playerId: number;
         mark: ReturnType<typeof createMark>;
       }> = [];
+
+      const allCards = getCards(themeId);
+      const cardSet = new Set(cards);
+      const publicSet = new Set(publicCards);
 
       cards.forEach((cardId) => {
         for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
@@ -127,11 +125,25 @@ export function Sheet(props: Props) {
         }
       });
 
+      // For owner cards: also mark rest of P1 column as NOT
+      // (cards that are not owner cards and not public cards)
+      if (type === "owner") {
+        allCards.forEach((card) => {
+          if (!cardSet.has(card.id) && !publicSet.has(card.id)) {
+            updates.push({
+              cardId: card.id,
+              playerId: 1,
+              mark: createMark("not"),
+            });
+          }
+        });
+      }
+
       if (updates.length > 0) {
         batchSetMarks(updates);
       }
     },
-    [batchSetMarks]
+    [batchSetMarks, themeId, publicCards]
   );
 
   // Validation for marker operations
