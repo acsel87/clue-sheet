@@ -36,8 +36,8 @@ type AutoRuleMeta = {
 
 const AUTO_RULES_META: AutoRuleMeta[] = [
   {
-    id: "columnElimination",
-    name: "Column elimination",
+    id: "rowElimination",
+    name: "Row elimination",
     description:
       "When a card is marked as HAS for any player, automatically mark all other cells in that row as NOT.",
   },

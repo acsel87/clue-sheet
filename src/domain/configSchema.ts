@@ -36,9 +36,7 @@ const PlayerConfigSchema: z.ZodType<AppConfig["players"][number]> = z.object({
  */
 const AutoRulesSchema: z.ZodType<AutoRulesConfig> = z
   .object({
-    columnElimination: z
-      .boolean()
-      .default(DEFAULT_AUTO_RULES.columnElimination),
+    rowElimination: z.boolean().default(DEFAULT_AUTO_RULES.rowElimination),
   })
   .default(DEFAULT_AUTO_RULES);
 

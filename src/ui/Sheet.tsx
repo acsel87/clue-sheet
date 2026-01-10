@@ -186,10 +186,10 @@ export function Sheet(props: Props) {
   );
 
   /**
-   * Apply columnElimination rule: mark all other cells in row as NOT
+   * Apply rowElimination rule: mark all other cells in row as NOT
    * Preserves existing number markers and bar colors
    */
-  const applyColumnElimination = useCallback(
+  const applyRowElimination = useCallback(
     (cardId: CardId, hasPlayerId: number) => {
       const updates: Array<{
         cardId: CardId;
@@ -306,7 +306,7 @@ export function Sheet(props: Props) {
 
   /**
    * Mark cell as HAS
-   * If columnElimination rule is enabled, also mark other cells in row as NOT
+   * If rowElimination rule is enabled, also mark other cells in row as NOT
    */
   function handleMarkHas() {
     if (!selectedCell) return;
@@ -316,9 +316,9 @@ export function Sheet(props: Props) {
     // Set the primary mark
     setPrimary(cardId, playerId, "has");
 
-    // Apply columnElimination if enabled
-    if (autoRules.columnElimination) {
-      applyColumnElimination(cardId, playerId);
+    // Apply rowElimination if enabled
+    if (autoRules.rowElimination) {
+      applyRowElimination(cardId, playerId);
     }
 
     handleCloseMarkerBar();

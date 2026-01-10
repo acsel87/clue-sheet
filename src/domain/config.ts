@@ -34,14 +34,14 @@ export type PlayerConfig = Readonly<{
  *
  * Only rules that affect gameplay strategy are toggleable.
  */
-export type AutoRuleId = "columnElimination";
+export type AutoRuleId = "rowElimination";
 
 export type AutoRulesConfig = Readonly<{
-  columnElimination: boolean;
+  rowElimination: boolean;
 }>;
 
 export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
-  columnElimination: false,
+  rowElimination: false,
 } as const;
 
 /**
