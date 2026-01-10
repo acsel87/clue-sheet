@@ -11,6 +11,9 @@ export type {
   AutoRulesConfig,
   ConstraintId,
   DerivedGameParams,
+  RuleType,
+  CascadeTrigger,
+  RuleMeta,
 } from "./config";
 export {
   MIN_PLAYERS,
@@ -19,6 +22,7 @@ export {
   DEFAULT_AUTO_RULES,
   PLAYER_COLORS,
   CONSTRAINT_DEPENDENCIES,
+  RULE_DEFINITIONS,
   isConstraintRequired,
   deriveGameParams,
   createDefaultPlayer,

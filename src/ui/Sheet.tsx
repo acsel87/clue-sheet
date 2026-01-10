@@ -78,6 +78,7 @@ export function Sheet(props: Props) {
     clearMark,
     batchSetMarks,
     removeNumberFromColumn,
+    findNumberInColumn,
     resetAll: resetAllMarks,
   } = useCellMarks();
 
@@ -224,6 +225,73 @@ export function Sheet(props: Props) {
   );
 
   /**
+   * Apply lastMaybeDeduction rule: when a cell with numbers is marked NOT,
+   * check if only one cell remains for each number in that column.
+   * If so, mark that cell as HAS.
+   *
+   * @param cardId - The card that was just marked NOT
+   * @param playerId - The player column
+   */
+  const applyLastMaybeDeduction = useCallback(
+    (cardId: CardId, playerId: number) => {
+      // Get the mark (numbers are preserved even after marking NOT)
+      const mark = getCellMark(cardId, playerId);
+
+      // Only proceed if this cell has number markers
+      if (mark.numbers.size === 0) return;
+
+      // Process each number marker
+      for (const num of mark.numbers) {
+        // Find all cells in this column with this number
+        const cellsWithNumber = findNumberInColumn(playerId, num);
+
+        // Check if any cell already has HAS (deduction already made or invalid)
+        let hasHasCell = false;
+        for (const cid of cellsWithNumber) {
+          const m = getCellMark(cid, playerId);
+          if (m.primary === "has") {
+            hasHasCell = true;
+            break;
+          }
+        }
+        if (hasHasCell) continue; // Skip this number, can't make deduction
+
+        // Find cells that are NOT marked as NOT (potential candidates)
+        const candidateCells: CardId[] = [];
+        for (const cid of cellsWithNumber) {
+          const m = getCellMark(cid, playerId);
+          if (m.primary !== "not") {
+            candidateCells.push(cid);
+          }
+        }
+
+        // If exactly one cell is not NOT, mark it as HAS
+        if (candidateCells.length === 1) {
+          const targetCardId = candidateCells[0]!;
+          const targetMark = getCellMark(targetCardId, playerId);
+
+          // Mark as HAS, preserving numbers and bar colors
+          batchSetMarks([
+            {
+              cardId: targetCardId,
+              playerId,
+              mark: withPrimary(targetMark, "has"),
+            },
+          ]);
+
+          // If rowElimination is enabled, also apply it to the newly marked HAS
+          if (autoRules.rowElimination) {
+            applyRowElimination(targetCardId, playerId);
+          }
+        }
+        // If 0 candidates: all are NOT, no deduction possible
+        // If >1 candidates: can't determine which one, no deduction yet
+      }
+    },
+    [getCellMark, findNumberInColumn, batchSetMarks, autoRules.rowElimination, applyRowElimination]
+  );
+
+  /**
    * Validation for marker operations
    * Constraints are only enforced if dependent rules are enabled
    */
@@ -324,9 +392,23 @@ export function Sheet(props: Props) {
     handleCloseMarkerBar();
   }
 
+  /**
+   * Mark cell as NOT
+   * If lastMaybeDeduction rule is enabled, check for deduction opportunities
+   */
   function handleMarkNot() {
     if (!selectedCell) return;
-    setPrimary(selectedCell.cardId, selectedCell.playerId, "not");
+
+    const { cardId, playerId } = selectedCell;
+
+    // Set the primary mark
+    setPrimary(cardId, playerId, "not");
+
+    // Apply lastMaybeDeduction if enabled
+    if (autoRules.lastMaybeDeduction) {
+      applyLastMaybeDeduction(cardId, playerId);
+    }
+
     handleCloseMarkerBar();
   }
 

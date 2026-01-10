@@ -41,6 +41,12 @@ const AUTO_RULES_META: AutoRuleMeta[] = [
     description:
       "When a card is marked as HAS for any player, automatically mark all other cells in that row as NOT.",
   },
+  {
+    id: "lastMaybeDeduction",
+    name: "Last Maybe deduction",
+    description:
+      "When a cell with maybe numbers is marked NOT, check if only one cell remains for that number in the column. If so, mark it as HAS (that player must have that card). Enables number marker constraints.",
+  },
 ];
 
 export function SettingsModal(props: Props) {

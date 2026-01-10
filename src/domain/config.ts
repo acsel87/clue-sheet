@@ -33,15 +33,59 @@ export type PlayerConfig = Readonly<{
  * - Murder item detection (always applied)
  *
  * Only rules that affect gameplay strategy are toggleable.
+ *
+ * RULE TYPES (for Phase 6.2 processing):
+ * - Cascading: Triggered by specific cell mark changes (HAS/NOT)
+ * - Looping: Scans entire grid for patterns (not triggered by events)
  */
-export type AutoRuleId = "rowElimination";
+export type AutoRuleId = "rowElimination" | "lastMaybeDeduction";
+
+/**
+ * Rule type classification for processing mechanism
+ * - cascading: Triggered by mark changes, processed via queue
+ * - looping: Scans grid after cascading completes
+ */
+export type RuleType = "cascading" | "looping";
+
+/**
+ * Cascading rule trigger conditions
+ */
+export type CascadeTrigger = "has" | "not";
+
+/**
+ * Rule metadata for processing engine (Phase 6.2)
+ */
+export type RuleMeta = {
+  id: AutoRuleId;
+  type: RuleType;
+  /** For cascading rules: what mark change triggers this rule */
+  triggers?: CascadeTrigger[];
+};
+
+/**
+ * Rule definitions with processing metadata
+ */
+export const RULE_DEFINITIONS: Record<AutoRuleId, RuleMeta> = {
+  rowElimination: {
+    id: "rowElimination",
+    type: "cascading",
+    triggers: ["has"],
+  },
+  lastMaybeDeduction: {
+    id: "lastMaybeDeduction",
+    type: "cascading",
+    triggers: ["not"],
+  },
+} as const;
 
 export type AutoRulesConfig = Readonly<{
   rowElimination: boolean;
+  lastMaybeDeduction: boolean;
 }>;
 
 export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
-  rowElimination: false,
+  rowElimination: true,
+  lastMaybeDeduction: true,
 } as const;
 
 /**
@@ -49,14 +93,18 @@ export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
  *
  * Maps constraints to the rules that require them.
  * A constraint is only enforced if at least one dependent rule is enabled.
+ *
+ * lastMaybeDeduction requires:
+ * - numbersOnlyOnEmptyOrBars: Numbers must indicate "maybe" status (not on HAS/NOT)
+ * - numberToggleRemovesFromColumn: Ensures consistent number markers across column
  */
 export type ConstraintId =
   | "numbersOnlyOnEmptyOrBars"
   | "numberToggleRemovesFromColumn";
 
 export const CONSTRAINT_DEPENDENCIES: Record<ConstraintId, AutoRuleId[]> = {
-  numbersOnlyOnEmptyOrBars: [],
-  numberToggleRemovesFromColumn: [],
+  numbersOnlyOnEmptyOrBars: ["lastMaybeDeduction"],
+  numberToggleRemovesFromColumn: ["lastMaybeDeduction"],
 } as const;
 
 /**
