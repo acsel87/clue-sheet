@@ -72,6 +72,7 @@ export function Sheet(props: Props) {
 
   const {
     getCellMark,
+    setCellMark,
     setPrimary,
     toggleNumber,
     toggleBarColor,
@@ -126,6 +127,16 @@ export function Sheet(props: Props) {
       return isConstraintRequired(constraintId, autoRules);
     },
     [autoRules]
+  );
+
+  /**
+   * Count how many cells in a column have a specific number marker
+   */
+  const countNumberInColumn = useCallback(
+    (playerId: number, num: NumberMarkerKey): number => {
+      return findNumberInColumn(playerId, num).length;
+    },
+    [findNumberInColumn]
   );
 
   /**
@@ -229,19 +240,21 @@ export function Sheet(props: Props) {
    * check if only one cell remains for each number in that column.
    * If so, mark that cell as HAS.
    *
+   * IMPORTANT: We pass `numbers` directly instead of reading from state,
+   * because React state updates are asynchronous and getCellMark would
+   * return stale data.
+   *
    * @param cardId - The card that was just marked NOT
    * @param playerId - The player column
+   * @param numbers - The number markers that were on this cell
    */
   const applyLastMaybeDeduction = useCallback(
-    (cardId: CardId, playerId: number) => {
-      // Get the mark (numbers are preserved even after marking NOT)
-      const mark = getCellMark(cardId, playerId);
-
+    (cardId: CardId, playerId: number, numbers: ReadonlySet<NumberMarkerKey>) => {
       // Only proceed if this cell has number markers
-      if (mark.numbers.size === 0) return;
+      if (numbers.size === 0) return;
 
       // Process each number marker
-      for (const num of mark.numbers) {
+      for (const num of numbers) {
         // Find all cells in this column with this number
         const cellsWithNumber = findNumberInColumn(playerId, num);
 
@@ -257,8 +270,12 @@ export function Sheet(props: Props) {
         if (hasHasCell) continue; // Skip this number, can't make deduction
 
         // Find cells that are NOT marked as NOT (potential candidates)
+        // IMPORTANT: Exclude the cell we just marked (it's now NOT but state hasn't updated)
         const candidateCells: CardId[] = [];
         for (const cid of cellsWithNumber) {
+          // Skip the cell we just marked as NOT
+          if (cid === cardId) continue;
+
           const m = getCellMark(cid, playerId);
           if (m.primary !== "not") {
             candidateCells.push(cid);
@@ -305,22 +322,36 @@ export function Sheet(props: Props) {
         canToggleNumber: (num: NumberMarkerKey) => {
           const isAdding = !currentMark.numbers.has(num);
 
-          // Only enforce constraint if a rule depends on it
-          if (isAdding && isConstraintEnforced("numbersOnlyOnEmptyOrBars")) {
-            if (currentMark.primary === "has" || currentMark.primary === "not") {
-              return {
-                allowed: false,
-                reason:
-                  "Maybe markers can only be added to empty or colored bar cells.",
-              };
+          if (isAdding) {
+            // Constraint: Numbers only on empty/bars cells
+            if (isConstraintEnforced("numbersOnlyOnEmptyOrBars")) {
+              if (currentMark.primary === "has" || currentMark.primary === "not") {
+                return {
+                  allowed: false,
+                  reason:
+                    "Maybe markers can only be added to empty or colored bar cells.",
+                };
+              }
+            }
+
+            // Constraint: Limit maybe markers to hand size per column
+            if (isConstraintEnforced("limitMaybeToHandSize")) {
+              const countInColumn = countNumberInColumn(playerId, num);
+              if (countInColumn >= handSize) {
+                return {
+                  allowed: false,
+                  reason: `Already ${handSize} cells marked with "${num}" in this column (hand size limit).`,
+                };
+              }
             }
           }
+
           return { allowed: true };
         },
         canToggleBar: () => ({ allowed: true }),
       };
     },
-    [getCellMark, isConstraintEnforced]
+    [getCellMark, isConstraintEnforced, countNumberInColumn, handSize]
   );
 
   // Handle confirm button click
@@ -401,13 +432,35 @@ export function Sheet(props: Props) {
 
     const { cardId, playerId } = selectedCell;
 
-    // Set the primary mark
-    setPrimary(cardId, playerId, "not");
+    // IMPORTANT: Get current mark BEFORE state update for rule processing
+    const currentMark = getCellMark(cardId, playerId);
 
-    // Apply lastMaybeDeduction if enabled
-    if (autoRules.lastMaybeDeduction) {
-      applyLastMaybeDeduction(cardId, playerId);
+    // Set the primary mark (preserving numbers)
+    const newMark = withPrimary(currentMark, "not");
+    setCellMark(cardId, playerId, newMark);
+
+    // Apply lastMaybeDeduction if enabled, passing numbers directly
+    // (can't read from state because update is async)
+    if (autoRules.lastMaybeDeduction && currentMark.numbers.size > 0) {
+      applyLastMaybeDeduction(cardId, playerId, currentMark.numbers);
     }
+
+    handleCloseMarkerBar();
+  }
+
+  /**
+   * Clear only the primary mark, preserving numbers
+   * Used when toggling off HAS/NOT
+   */
+  function handleClearPrimary() {
+    if (!selectedCell) return;
+
+    const { cardId, playerId } = selectedCell;
+    const currentMark = getCellMark(cardId, playerId);
+
+    // Only clear the primary, preserve numbers and bar colors
+    const newMark = withPrimary(currentMark, "empty");
+    setCellMark(cardId, playerId, newMark);
 
     handleCloseMarkerBar();
   }
@@ -430,6 +483,9 @@ export function Sheet(props: Props) {
     toggleBarColor(selectedCell.cardId, selectedCell.playerId, color);
   }
 
+  /**
+   * Completely clear a cell (including numbers)
+   */
   function handleClearMark() {
     if (!selectedCell) return;
     clearMark(selectedCell.cardId, selectedCell.playerId);
@@ -514,6 +570,7 @@ export function Sheet(props: Props) {
               onMarkNot={handleMarkNot}
               onToggleNumber={handleToggleNumber}
               onToggleBar={handleToggleBar}
+              onClearPrimary={handleClearPrimary}
               onClear={handleClearMark}
               onClose={handleCloseMarkerBar}
             />

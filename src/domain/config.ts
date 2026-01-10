@@ -100,11 +100,13 @@ export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
  */
 export type ConstraintId =
   | "numbersOnlyOnEmptyOrBars"
-  | "numberToggleRemovesFromColumn";
+  | "numberToggleRemovesFromColumn"
+  | "limitMaybeToHandSize";
 
 export const CONSTRAINT_DEPENDENCIES: Record<ConstraintId, AutoRuleId[]> = {
   numbersOnlyOnEmptyOrBars: ["lastMaybeDeduction"],
   numberToggleRemovesFromColumn: ["lastMaybeDeduction"],
+  limitMaybeToHandSize: ["lastMaybeDeduction"],
 } as const;
 
 /**

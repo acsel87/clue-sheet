@@ -14,7 +14,7 @@ export type ValidationResult = {
 
 /**
  * Validation functions for marker operations
- * 
+ *
  * Note the semantic distinction:
  * - Numbers: automation-aware, may have constraints (Phase 3)
  * - Bars: manual-only, typically always allowed
@@ -35,6 +35,9 @@ type Props = {
   onMarkNot: () => void;
   onToggleNumber: (num: NumberMarkerKey) => void;
   onToggleBar: (color: BarColorKey) => void;
+  /** Clear only primary mark, preserve numbers */
+  onClearPrimary: () => void;
+  /** Clear entire cell including numbers */
   onClear: () => void;
   onClose: () => void;
 };
@@ -47,7 +50,7 @@ export function MarkerBar(props: Props) {
     onMarkNot,
     onToggleNumber,
     onToggleBar,
-    onClear,
+    onClearPrimary,
     onClose,
   } = props;
 
@@ -68,7 +71,8 @@ export function MarkerBar(props: Props) {
       return;
     }
     if (isHasSelected) {
-      onClear();
+      // Toggle off: only clear primary, preserve numbers
+      onClearPrimary();
     } else {
       onMarkHas();
     }
@@ -80,7 +84,8 @@ export function MarkerBar(props: Props) {
       return;
     }
     if (isNotSelected) {
-      onClear();
+      // Toggle off: only clear primary, preserve numbers
+      onClearPrimary();
     } else {
       onMarkNot();
     }
