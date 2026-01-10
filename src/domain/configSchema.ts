@@ -40,6 +40,9 @@ const AutoRulesSchema: z.ZodType<AutoRulesConfig> = z
     lastMaybeDeduction: z
       .boolean()
       .default(DEFAULT_AUTO_RULES.lastMaybeDeduction),
+    deductionAfterMurder: z
+      .boolean()
+      .default(DEFAULT_AUTO_RULES.deductionAfterMurder),
   })
   .default(DEFAULT_AUTO_RULES);
 

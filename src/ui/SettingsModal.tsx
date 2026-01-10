@@ -47,6 +47,12 @@ const AUTO_RULES_META: AutoRuleMeta[] = [
     description:
       "When a cell with maybe numbers is marked NOT, check if only one cell remains for that number in the column. If so, mark it as HAS (that player must have that card). Enables number marker constraints.",
   },
+  {
+    id: "deductionAfterMurder",
+    name: "Deduction after murder",
+    description:
+      "When a murder item is found in a category and another card in that category has all cells marked NOT except one, mark the remaining cell as HAS (that player must have that card).",
+  },
 ];
 
 export function SettingsModal(props: Props) {

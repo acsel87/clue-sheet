@@ -7,10 +7,17 @@ import type {
   NumberMarkerKey,
   AppConfig,
   ConstraintId,
+  CategoryId,
 } from "../domain";
 import type { OtherPlayerId } from "../domain/card-ownership";
 import type { SetupPhase } from "../infra/gameSetup";
-import { getCards, createMark, isConstraintRequired, withPrimary } from "../domain";
+import {
+  getCards,
+  createMark,
+  isConstraintRequired,
+  withPrimary,
+  cardsByCategory,
+} from "../domain";
 import { getPhaseInfo, validateSelection } from "../infra/gameSetup";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
@@ -120,6 +127,18 @@ export function Sheet(props: Props) {
   );
 
   /**
+   * Get the category of a card
+   */
+  const getCardCategory = useCallback(
+    (cardId: CardId): CategoryId | null => {
+      const cards = getCards(themeId);
+      const card = cards.find((c) => c.id === cardId);
+      return card?.category ?? null;
+    },
+    [themeId]
+  );
+
+  /**
    * Check if a constraint is currently enforced
    */
   const isConstraintEnforced = useCallback(
@@ -215,7 +234,7 @@ export function Sheet(props: Props) {
 
         const currentMark = getCellMark(cardId, playerId);
 
-        // Skip if already NOT or HAS (don't overwrite existing definitive marks)
+        // Precondition: Skip if already NOT or HAS
         if (currentMark.primary === "not" || currentMark.primary === "has") {
           continue;
         }
@@ -275,7 +294,6 @@ export function Sheet(props: Props) {
         for (const cid of cellsWithNumber) {
           // Skip the cell we just marked as NOT
           if (cid === cardId) continue;
-
           const m = getCellMark(cid, playerId);
           if (m.primary !== "not") {
             candidateCells.push(cid);
@@ -306,6 +324,186 @@ export function Sheet(props: Props) {
       }
     },
     [getCellMark, findNumberInColumn, batchSetMarks, autoRules.rowElimination, applyRowElimination]
+  );
+
+  /**
+   * Check if a cell is effectively NOT
+   * Accounts for pending state changes that haven't been applied yet
+   */
+  const isEffectivelyNot = useCallback(
+    (
+      cardId: CardId,
+      playerId: number,
+      pendingNot?: { cardId: CardId; playerId: number }
+    ): boolean => {
+      // If this is the pending cell, treat it as NOT
+      if (pendingNot && pendingNot.cardId === cardId && pendingNot.playerId === playerId) {
+        return true;
+      }
+      const mark = getCellMark(cardId, playerId);
+      return mark.primary === "not";
+    },
+    [getCellMark]
+  );
+
+  /**
+   * Check if a cell is effectively HAS
+   * Accounts for pending state changes
+   */
+  const isEffectivelyHas = useCallback(
+    (
+      cardId: CardId,
+      playerId: number,
+      pendingNot?: { cardId: CardId; playerId: number }
+    ): boolean => {
+      // If this is the pending NOT cell, it's definitely not HAS
+      if (pendingNot && pendingNot.cardId === cardId && pendingNot.playerId === playerId) {
+        return false;
+      }
+      const mark = getCellMark(cardId, playerId);
+      return mark.primary === "has";
+    },
+    [getCellMark]
+  );
+
+  /**
+   * Check if a card is a murder item (all cells in row are NOT)
+   * Accounts for pending state changes
+   */
+  const isMurderItem = useCallback(
+    (cardId: CardId, pendingNot?: { cardId: CardId; playerId: number }): boolean => {
+      // Skip locked cards (public/owner)
+      if (publicCards.includes(cardId) || ownerCards.includes(cardId)) {
+        return false;
+      }
+
+      for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
+        if (!isEffectivelyNot(cardId, playerId, pendingNot)) {
+          return false;
+        }
+      }
+      return true;
+    },
+    [isEffectivelyNot, publicCards, ownerCards]
+  );
+
+  /**
+   * Find the murder item in a category (if any)
+   * Accounts for pending state changes
+   */
+  const findMurderItemInCategory = useCallback(
+    (category: CategoryId, pendingNot?: { cardId: CardId; playerId: number }): CardId | null => {
+      const cardsInCategory = cardsByCategory(themeId, category);
+      for (const card of cardsInCategory) {
+        if (isMurderItem(card.id, pendingNot)) {
+          return card.id;
+        }
+      }
+      return null;
+    },
+    [themeId, isMurderItem]
+  );
+
+  /**
+   * Apply deductionAfterMurder rule
+   *
+   * When a murder item exists in a category and another card in that category
+   * has all cells except one marked as NOT, mark the remaining cell as HAS.
+   *
+   * @param pendingCardId - The card that was just marked NOT
+   * @param pendingPlayerId - The player column that was just marked NOT
+   *
+   * IMPORTANT: We pass pendingCardId/pendingPlayerId because React state updates
+   * are async. When this function runs, getCellMark() would return the OLD value
+   * for the cell we just marked. By passing the pending info, we can treat that
+   * cell as NOT even before state updates.
+   */
+  const applyDeductionAfterMurder = useCallback(
+    (pendingCardId: CardId, pendingPlayerId: number) => {
+      const category = getCardCategory(pendingCardId);
+      if (!category) return;
+
+      // Pending NOT info for effective state checks
+      const pendingNot = { cardId: pendingCardId, playerId: pendingPlayerId };
+
+      // Find if there's a murder item in this category (using effective state)
+      const murderItemId = findMurderItemInCategory(category, pendingNot);
+      if (!murderItemId) return;
+
+      // Get all cards in category (excluding murder item and locked cards)
+      const cardsInCategory = cardsByCategory(themeId, category);
+
+      for (const card of cardsInCategory) {
+        // Skip the murder item itself
+        if (card.id === murderItemId) continue;
+
+        // Skip locked cards
+        if (publicCards.includes(card.id) || ownerCards.includes(card.id)) continue;
+
+        // Precondition: Check if row already has HAS (using effective state)
+        let hasHasInRow = false;
+        for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
+          if (isEffectivelyHas(card.id, playerId, pendingNot)) {
+            hasHasInRow = true;
+            break;
+          }
+        }
+        if (hasHasInRow) continue;
+
+        // Count NOT cells and find the candidate (non-NOT cell)
+        let notCount = 0;
+        let candidatePlayerId: number | null = null;
+
+        for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
+          if (isEffectivelyNot(card.id, playerId, pendingNot)) {
+            notCount++;
+          } else {
+            // This is a potential candidate
+            if (candidatePlayerId === null) {
+              candidatePlayerId = playerId;
+            } else {
+              // More than one non-NOT cell, can't deduce
+              candidatePlayerId = null;
+              break;
+            }
+          }
+        }
+
+        // If exactly (playerCount - 1) cells are NOT and one candidate remains
+        if (notCount === PLAYER_COL_COUNT - 1 && candidatePlayerId !== null) {
+          const targetMark = getCellMark(card.id, candidatePlayerId);
+
+          // Precondition: Target must not already be HAS (shouldn't happen but safety check)
+          if (targetMark.primary === "has") continue;
+
+          batchSetMarks([
+            {
+              cardId: card.id,
+              playerId: candidatePlayerId,
+              mark: withPrimary(targetMark, "has"),
+            },
+          ]);
+
+          // Trigger rowElimination if enabled
+          if (autoRules.rowElimination) {
+            applyRowElimination(card.id, candidatePlayerId);
+          }
+        }
+      }
+    },
+    [
+      getCardCategory,
+      findMurderItemInCategory,
+      themeId,
+      publicCards,
+      ownerCards,
+      getCellMark,
+      isEffectivelyNot,
+      isEffectivelyHas,
+      batchSetMarks,
+      autoRules.rowElimination,
+      applyRowElimination,
+    ]
   );
 
   /**
@@ -443,6 +641,12 @@ export function Sheet(props: Props) {
     // (can't read from state because update is async)
     if (autoRules.lastMaybeDeduction && currentMark.numbers.size > 0) {
       applyLastMaybeDeduction(cardId, playerId, currentMark.numbers);
+    }
+
+    // Apply deductionAfterMurder if enabled
+    // Pass cardId AND playerId so it knows which cell is "pending NOT"
+    if (autoRules.deductionAfterMurder) {
+      applyDeductionAfterMurder(cardId, playerId);
     }
 
     handleCloseMarkerBar();

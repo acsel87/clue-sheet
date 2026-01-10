@@ -30,7 +30,7 @@ export type PlayerConfig = Readonly<{
  * Note: Some behaviors are ALWAYS enabled and not user-configurable:
  * - Public cards auto-mark (during setup)
  * - Own cards auto-mark (during setup)
- * - Murder item detection (always applied)
+ * - Murder item detection (always applied - visual only)
  *
  * Only rules that affect gameplay strategy are toggleable.
  *
@@ -38,7 +38,10 @@ export type PlayerConfig = Readonly<{
  * - Cascading: Triggered by specific cell mark changes (HAS/NOT)
  * - Looping: Scans entire grid for patterns (not triggered by events)
  */
-export type AutoRuleId = "rowElimination" | "lastMaybeDeduction";
+export type AutoRuleId =
+  | "rowElimination"
+  | "lastMaybeDeduction"
+  | "deductionAfterMurder";
 
 /**
  * Rule type classification for processing mechanism
@@ -76,16 +79,23 @@ export const RULE_DEFINITIONS: Record<AutoRuleId, RuleMeta> = {
     type: "cascading",
     triggers: ["not"],
   },
+  deductionAfterMurder: {
+    id: "deductionAfterMurder",
+    type: "cascading",
+    triggers: ["not"],
+  },
 } as const;
 
 export type AutoRulesConfig = Readonly<{
   rowElimination: boolean;
   lastMaybeDeduction: boolean;
+  deductionAfterMurder: boolean;
 }>;
 
 export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
   rowElimination: true,
   lastMaybeDeduction: true,
+  deductionAfterMurder: true,
 } as const;
 
 /**
@@ -97,6 +107,7 @@ export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
  * lastMaybeDeduction requires:
  * - numbersOnlyOnEmptyOrBars: Numbers must indicate "maybe" status (not on HAS/NOT)
  * - numberToggleRemovesFromColumn: Ensures consistent number markers across column
+ * - limitMaybeToHandSize: Prevents exceeding hand size for number markers
  */
 export type ConstraintId =
   | "numbersOnlyOnEmptyOrBars"
