@@ -10,7 +10,7 @@ import type {
 } from "../domain";
 import type { OtherPlayerId } from "../domain/card-ownership";
 import type { SetupPhase } from "../infra/gameSetup";
-import { getCards, createMark, isConstraintRequired } from "../domain";
+import { getCards, createMark, isConstraintRequired, withPrimary } from "../domain";
 import { getPhaseInfo, validateSelection } from "../infra/gameSetup";
 import { ActionBar } from "./ActionBar";
 import { MarkerBar, type ValidationFns } from "./MarkerBar";
@@ -128,15 +128,13 @@ export function Sheet(props: Props) {
   );
 
   /**
-   * Apply cell marks for confirmed cards
-   * Only applies if the corresponding auto rule is enabled
+   * Apply cell marks for confirmed cards (ALWAYS enabled - not toggleable)
+   *
+   * - Public cards: all cells in row → NOT
+   * - Owner cards: P1 column → HAS for owned, NOT for others; other columns → NOT for owned cards
    */
   const applyMarksForCards = useCallback(
     (cards: ReadonlyArray<CardId>, type: "public" | "owner") => {
-      // Check if the auto rule is enabled
-      if (type === "public" && !autoRules.publicCards) return;
-      if (type === "owner" && !autoRules.ownCards) return;
-
       const updates: Array<{
         cardId: CardId;
         playerId: number;
@@ -184,7 +182,45 @@ export function Sheet(props: Props) {
         batchSetMarks(updates);
       }
     },
-    [batchSetMarks, themeId, publicCards, autoRules]
+    [batchSetMarks, themeId, publicCards]
+  );
+
+  /**
+   * Apply columnElimination rule: mark all other cells in row as NOT
+   * Preserves existing number markers and bar colors
+   */
+  const applyColumnElimination = useCallback(
+    (cardId: CardId, hasPlayerId: number) => {
+      const updates: Array<{
+        cardId: CardId;
+        playerId: number;
+        mark: ReturnType<typeof createMark>;
+      }> = [];
+
+      for (let playerId = 1; playerId <= PLAYER_COL_COUNT; playerId++) {
+        // Skip the cell that was just marked as HAS
+        if (playerId === hasPlayerId) continue;
+
+        const currentMark = getCellMark(cardId, playerId);
+
+        // Skip if already NOT or HAS (don't overwrite existing definitive marks)
+        if (currentMark.primary === "not" || currentMark.primary === "has") {
+          continue;
+        }
+
+        // Mark as NOT, preserving numbers and bar colors
+        updates.push({
+          cardId,
+          playerId,
+          mark: withPrimary(currentMark, "not"),
+        });
+      }
+
+      if (updates.length > 0) {
+        batchSetMarks(updates);
+      }
+    },
+    [getCellMark, batchSetMarks]
   );
 
   /**
@@ -268,9 +304,23 @@ export function Sheet(props: Props) {
     setSelectedCell(null);
   }
 
+  /**
+   * Mark cell as HAS
+   * If columnElimination rule is enabled, also mark other cells in row as NOT
+   */
   function handleMarkHas() {
     if (!selectedCell) return;
-    setPrimary(selectedCell.cardId, selectedCell.playerId, "has");
+
+    const { cardId, playerId } = selectedCell;
+
+    // Set the primary mark
+    setPrimary(cardId, playerId, "has");
+
+    // Apply columnElimination if enabled
+    if (autoRules.columnElimination) {
+      applyColumnElimination(cardId, playerId);
+    }
+
     handleCloseMarkerBar();
   }
 
@@ -353,7 +403,6 @@ export function Sheet(props: Props) {
             selectedOwnedCard={selectedOwnedCard}
             getShownTo={getShownTo}
             onOwnedCardClick={handleOwnedCardClick}
-            autoRules={autoRules}
           />
         </div>
 

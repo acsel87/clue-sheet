@@ -31,13 +31,11 @@ const PlayerConfigSchema: z.ZodType<AppConfig["players"][number]> = z.object({
 
 /**
  * Auto Rules Schema
- * Provides defaults for missing fields (backwards compatibility)
+ *
+ * Only user-toggleable rules are stored.
  */
 const AutoRulesSchema: z.ZodType<AutoRulesConfig> = z
   .object({
-    murderDetection: z.boolean().default(DEFAULT_AUTO_RULES.murderDetection),
-    publicCards: z.boolean().default(DEFAULT_AUTO_RULES.publicCards),
-    ownCards: z.boolean().default(DEFAULT_AUTO_RULES.ownCards),
     columnElimination: z
       .boolean()
       .default(DEFAULT_AUTO_RULES.columnElimination),
@@ -46,9 +44,6 @@ const AutoRulesSchema: z.ZodType<AutoRulesConfig> = z
 
 /**
  * App Config Schema
- *
- * Note: handSize and publicCount are no longer stored - they are derived
- * at runtime from theme (total cards) and player count.
  */
 export const AppConfigSchema: z.ZodType<AppConfig> = z.object({
   themeId: ThemeIdSchema,

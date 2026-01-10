@@ -21,13 +21,13 @@ type Props = {
   activeConfig: AppConfig;
   onClose: () => void;
   onSaved: (next: AppConfig) => void;
-  onResetGridRequested: () => void;
 };
 
 // All possible player IDs
 const ALL_PLAYER_IDS: PlayerId[] = [1, 2, 3, 4, 5, 6];
 
 // --- Auto Rules Metadata ---
+// Only user-toggleable rules are shown here
 type AutoRuleMeta = {
   id: AutoRuleId;
   name: string;
@@ -35,24 +35,6 @@ type AutoRuleMeta = {
 };
 
 const AUTO_RULES_META: AutoRuleMeta[] = [
-  {
-    id: "murderDetection",
-    name: "Murder item detection",
-    description:
-      "When all cells in a row are marked as NOT, the card name will be highlighted as a potential murder item with a red circular border.",
-  },
-  {
-    id: "publicCards",
-    name: "Public cards auto-mark",
-    description:
-      "When public cards are confirmed, all cells in those rows are automatically marked as NOT and the rows are disabled.",
-  },
-  {
-    id: "ownCards",
-    name: "Own cards auto-mark",
-    description:
-      "When your cards are confirmed, your column is marked as HAS for those cards and NOT for others. Other columns are marked as NOT for your cards.",
-  },
   {
     id: "columnElimination",
     name: "Column elimination",
@@ -62,7 +44,7 @@ const AUTO_RULES_META: AutoRuleMeta[] = [
 ];
 
 export function SettingsModal(props: Props) {
-  const { isOpen, activeConfig, onClose, onSaved, onResetGridRequested } = props;
+  const { isOpen, activeConfig, onClose, onSaved } = props;
 
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -246,7 +228,6 @@ export function SettingsModal(props: Props) {
   function handleSaveConfirmed() {
     setShowSaveConfirm(false);
     try {
-      // Ensure player names are synced before saving
       const finalPlayers = draft.players.map((p) => ({
         ...p,
         name: playerNames[p.id],
@@ -254,8 +235,7 @@ export function SettingsModal(props: Props) {
       const finalDraft = { ...draft, players: finalPlayers };
 
       const persisted = saveConfig(finalDraft);
-      onResetGridRequested();
-      onSaved(persisted);
+      onSaved(persisted);  // This now handles both config update AND reset
       onClose();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";

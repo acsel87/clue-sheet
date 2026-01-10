@@ -7,7 +7,6 @@ import type {
   ThemeId,
   CellMark,
   NumberMarkerKey,
-  AutoRulesConfig,
 } from "../domain";
 import type { OtherPlayerId } from "../domain/card-ownership";
 import type { SetupPhase } from "../infra/gameSetup";
@@ -32,7 +31,6 @@ type Props = {
   selectedOwnedCard: CardId | null;
   getShownTo: (cardId: CardId) => ReadonlySet<OtherPlayerId>;
   onOwnedCardClick: (cardId: CardId) => void;
-  autoRules: AutoRulesConfig;
 };
 
 export function SheetGrid(props: Props) {
@@ -51,7 +49,6 @@ export function SheetGrid(props: Props) {
     selectedOwnedCard,
     getShownTo,
     onOwnedCardClick,
-    autoRules,
   } = props;
 
   const cols = Array.from({ length: playerCount }, (_, i) => i + 1);
@@ -99,7 +96,6 @@ export function SheetGrid(props: Props) {
           selectedOwnedCard={selectedOwnedCard}
           getShownTo={getShownTo}
           onOwnedCardClick={onOwnedCardClick}
-          autoRules={autoRules}
         />
       ))}
     </div>
@@ -125,7 +121,6 @@ function CategoryBlock(props: {
   selectedOwnedCard: CardId | null;
   getShownTo: (cardId: CardId) => ReadonlySet<OtherPlayerId>;
   onOwnedCardClick: (cardId: CardId) => void;
-  autoRules: AutoRulesConfig;
 }) {
   const {
     themeId,
@@ -144,7 +139,6 @@ function CategoryBlock(props: {
     selectedOwnedCard,
     getShownTo,
     onOwnedCardClick,
-    autoRules,
   } = props;
 
   const isInSetup = setupPhase !== "playing";
@@ -164,10 +158,9 @@ function CategoryBlock(props: {
         // Owner cards not in public set can be clicked for shown-to
         const canClickForShownTo = !isInSetup && isOwnerCard;
 
-        // Murder item detection (only if rule is enabled)
+        // Murder item detection (ALWAYS enabled)
         // All cells must be NOT, card must not be locked
         const isMurderItem =
-          autoRules.murderDetection &&
           !isRowLocked &&
           cols.every((playerId) => {
             const mark = getCellMark(card.id, playerId);

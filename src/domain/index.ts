@@ -31,8 +31,8 @@ export {
   // Types
   type CellMark,
   type PrimaryMark,
-  type NumberMarkerKey, // Automation-aware "maybe" markers
-  type BarColorKey, // Manual-only visual helpers
+  type NumberMarkerKey,
+  type BarColorKey,
 
   // Constants
   NUMBER_MARKER_KEYS,

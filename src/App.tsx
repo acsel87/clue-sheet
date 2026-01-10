@@ -49,30 +49,6 @@ export function App() {
     setSettingsOpen(true);
   }
 
-  /**
-   * Full game reset:
-   * 1. Clear all cell marks
-   * 2. Clear shown-to state
-   * 3. Clear setup state
-   * 4. Start fresh setup wizard
-   */
-  function resetGame() {
-    // Clear all grid state via Sheet ref
-    sheetRef.current?.resetAllMarks();
-    sheetRef.current?.resetShownTo();
-
-    // Clear persisted setup and restart
-    clearGameSetup();
-
-    // Recalculate with current config (may have changed)
-    const totalCards = getCards(config.themeId).length;
-    const playerCount = config.players.length;
-    const { publicCount: newPublicCount } = deriveGameParams(totalCards, playerCount);
-
-    const initial = createInitialSetup(newPublicCount);
-    setSetupState(initial);
-  }
-
   const toggleCardSelection = useCallback((cardId: CardId) => {
     setSetupState((prev) => {
       const current = new Set(prev.currentSelection);
@@ -144,9 +120,22 @@ export function App() {
   }
 
   /**
-   * Handle settings save
+   * Handle settings save - reset game with NEW config values
    */
   function handleSettingsSaved(nextConfig: AppConfig) {
+    // Reset grid state
+    sheetRef.current?.resetAllMarks();
+    sheetRef.current?.resetShownTo();
+    clearGameSetup();
+
+    // Calculate setup with NEW config values (not stale closure)
+    const totalCards = getCards(nextConfig.themeId).length;
+    const playerCount = nextConfig.players.length;
+    const { publicCount: newPublicCount } = deriveGameParams(totalCards, playerCount);
+    const initial = createInitialSetup(newPublicCount);
+    setSetupState(initial);
+
+    // Update config state
     setConfig(nextConfig);
   }
 
@@ -178,7 +167,6 @@ export function App() {
         activeConfig={config}
         onClose={() => setSettingsOpen(false)}
         onSaved={handleSettingsSaved}
-        onResetGridRequested={resetGame}
       />
     </main>
   );

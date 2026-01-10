@@ -25,28 +25,22 @@ export type PlayerConfig = Readonly<{
 }>;
 
 /**
- * AUTO RULES CONFIGURATION
+ * USER-TOGGLEABLE AUTO RULES
  *
- * Each rule can be enabled/disabled by the user.
- * Some rules depend on constraints being enforced.
+ * Note: Some behaviors are ALWAYS enabled and not user-configurable:
+ * - Public cards auto-mark (during setup)
+ * - Own cards auto-mark (during setup)
+ * - Murder item detection (always applied)
+ *
+ * Only rules that affect gameplay strategy are toggleable.
  */
-export type AutoRuleId =
-  | "murderDetection"
-  | "publicCards"
-  | "ownCards"
-  | "columnElimination";
+export type AutoRuleId = "columnElimination";
 
 export type AutoRulesConfig = Readonly<{
-  murderDetection: boolean;
-  publicCards: boolean;
-  ownCards: boolean;
   columnElimination: boolean;
 }>;
 
 export const DEFAULT_AUTO_RULES: AutoRulesConfig = {
-  murderDetection: true,
-  publicCards: true,
-  ownCards: true,
   columnElimination: false,
 } as const;
 
@@ -100,7 +94,7 @@ export type DerivedGameParams = Readonly<{
 /**
  * Derive handSize and publicCount from total cards and player count
  *
- * Formula:
+ * Formula (excluding murder items):
  * - handSize = floor((totalCards - murderItemsCount) / playerCount)
  * - publicCount = (totalCards - murderItemsCount) % playerCount
  */
@@ -108,8 +102,9 @@ export function deriveGameParams(
   totalCards: number,
   playerCount: number
 ): DerivedGameParams {
-  const handSize = Math.floor((totalCards - MURDER_ITEMS_COUNT) / playerCount);
-  const publicCount = (totalCards - MURDER_ITEMS_COUNT) % playerCount;
+  const distributableCards = totalCards - MURDER_ITEMS_COUNT;
+  const handSize = Math.floor(distributableCards / playerCount);
+  const publicCount = distributableCards % playerCount;
   return { handSize, publicCount };
 }
 
